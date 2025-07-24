@@ -5,6 +5,7 @@ A modern football management system built with React, TypeScript, and Tailwind C
 ## Features
 
 ### 🎮 Player Mode
+
 - **Character Creation** - Customize your football player
 - **Skills & Styles** - Develop your player attributes
 - **Player Store** - Purchase skills, styles, and stat upgrades
@@ -12,6 +13,7 @@ A modern football management system built with React, TypeScript, and Tailwind C
 - **Leaderboard** - Track rankings and progress
 
 ### ⚽ Manager Mode
+
 - **Club Dashboard** - Manage your football club
 - **Squad Management** - Organize your team roster
 - **Formation Builder** - Design tactical formations with 21+ options
@@ -19,6 +21,7 @@ A modern football management system built with React, TypeScript, and Tailwind C
 - **Match Management** - Schedule and analyze matches
 
 ### 🛡️ Super Admin Mode
+
 - **User Management** - Manage players and managers
 - **Club Management** - Oversee all football clubs
 - **Tournament System** - Organize competitions
@@ -37,24 +40,28 @@ A modern football management system built with React, TypeScript, and Tailwind C
 ## Getting Started
 
 ### Prerequisites
-- Node.js 18+ 
+
+- Node.js 18+
 - npm or yarn
 
 ### Installation
 
 1. Clone the repository
+
 ```bash
 git clone <repository-url>
 cd pes-football-management
 ```
 
 2. Install dependencies
+
 ```bash
 cd frontend
 npm install
 ```
 
 3. Start development server
+
 ```bash
 npm run dev
 ```
@@ -85,6 +92,7 @@ frontend/
 ## Key Features
 
 ### 🎯 Formation Builder
+
 - 21+ tactical formations categorized by style:
   - **Attacking**: 4-3-3, 3-4-3, 4-2-3-1, etc.
   - **Balanced**: 4-4-2, 4-1-4-1, 4-4-1-1, etc.
@@ -94,12 +102,14 @@ frontend/
 - Real-time formation visualization
 
 ### 📱 Mobile-First Design
+
 - Responsive design for all screen sizes
 - Mobile-optimized navigation
 - Touch-friendly interactions
 - Progressive Web App ready
 
 ### 🎨 Custom Theme
+
 - Football-inspired color scheme
 - Stadium gradient backgrounds
 - Smooth animations and transitions
