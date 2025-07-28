@@ -40,10 +40,26 @@
     --ring: 210 100% 55%;
 
     /* Football Stadium Gradient */
-    --gradient-stadium: linear-gradient(135deg, hsl(220 25% 8%), hsl(220 20% 12%));
-    --gradient-field: linear-gradient(45deg, hsl(120 40% 25%), hsl(120 50% 30%));
-    --gradient-energy: linear-gradient(90deg, hsl(120 70% 50%), hsl(90 60% 45%));
-    --gradient-primary: linear-gradient(135deg, hsl(210 100% 55%), hsl(195 100% 60%));
+    --gradient-stadium: linear-gradient(
+      135deg,
+      hsl(220 25% 8%),
+      hsl(220 20% 12%)
+    );
+    --gradient-field: linear-gradient(
+      45deg,
+      hsl(120 40% 25%),
+      hsl(120 50% 30%)
+    );
+    --gradient-energy: linear-gradient(
+      90deg,
+      hsl(120 70% 50%),
+      hsl(90 60% 45%)
+    );
+    --gradient-primary: linear-gradient(
+      135deg,
+      hsl(210 100% 55%),
+      hsl(195 100% 60%)
+    );
 
     /* Shadows */
     --shadow-glow: 0 0 20px hsl(210 100% 55% / 0.3);
@@ -124,35 +140,59 @@
     @apply h-3 rounded-full overflow-hidden bg-muted;
     background: linear-gradient(90deg, transparent 0%, hsl(var(--muted)) 100%);
   }
-  
+
   .energy-fill {
     @apply h-full transition-all duration-500 ease-out;
     background: var(--gradient-energy);
   }
-  
+
   .stat-card {
     @apply bg-card border border-border rounded-xl p-4 transition-all duration-300;
     box-shadow: var(--shadow-card);
   }
-  
+
   .stat-card:hover {
     @apply border-primary/50;
     box-shadow: var(--shadow-glow);
   }
-  
+
   .football-button {
     @apply bg-primary text-primary-foreground px-6 py-3 rounded-lg font-semibold;
     @apply transition-all duration-300 hover:scale-105;
     background: var(--gradient-primary);
     box-shadow: var(--shadow-glow);
   }
-  
+
   .field-gradient {
     background: var(--gradient-field);
   }
-  
+
   .glow-border {
     @apply border border-primary/30;
     box-shadow: 0 0 15px hsl(var(--primary) / 0.2);
+  }
+
+  /* Stadium background gradient for auth page */
+  .bg-stadium-gradient {
+    background: linear-gradient(
+      135deg,
+      hsl(220 25% 8%) 0%,
+      hsl(220 20% 12%) 25%,
+      hsl(120 40% 15%) 50%,
+      hsl(220 20% 12%) 75%,
+      hsl(220 25% 8%) 100%
+    );
+  }
+
+  /* Primary gradient text */
+  .bg-primary-gradient {
+    background: var(--gradient-primary);
+  }
+
+  /* Football font for title */
+  .font-football {
+    font-family: "Inter", sans-serif;
+    font-weight: 900;
+    letter-spacing: 0.05em;
   }
 }

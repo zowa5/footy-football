@@ -1,14 +1,13 @@
 import { Outlet } from "react-router-dom";
 import { Sidebar } from "@/components/SuperAdminSidebar";
+import { useAuth } from "@/hooks/useAuth";
 
-interface SuperAdminLayoutProps {
-  onLogout?: () => void;
-}
+export default function SuperAdminLayout() {
+  const { logout } = useAuth();
 
-export default function SuperAdminLayout({ onLogout }: SuperAdminLayoutProps) {
   return (
     <div className="flex min-h-screen w-full">
-      <Sidebar onLogout={onLogout} />
+      <Sidebar onLogout={logout} />
       <main className="flex-1">
         <Outlet />
       </main>

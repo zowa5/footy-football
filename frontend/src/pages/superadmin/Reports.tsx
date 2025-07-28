@@ -1,25 +1,97 @@
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { DataTable } from "@/components/ui/data-table";
 import { Button } from "@/components/ui/button";
-import { Download, Flag, Timer, Activity } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Download,
+  Calendar,
+  TrendingUp,
+  Users,
+  Trophy,
+  DollarSign,
+  Activity,
+  Shield,
+  AlertTriangle,
+} from "lucide-react";
+import { useReports } from "@/hooks/api";
+import { ColumnDef } from "@tanstack/react-table";
 
-const matchReportColumns = [
+// Column definitions for different report types
+const userActivityColumns: ColumnDef<any>[] = [
   {
-    accessorKey: "matchId",
-    header: "Match ID",
+    accessorKey: "username",
+    header: "Username",
   },
   {
-    accessorKey: "homeTeam",
-    header: "Home Team",
+    accessorKey: "role",
+    header: "Role",
+    cell: ({ row }) => {
+      const role = row.getValue("role") as string;
+      return (
+        <Badge variant={role === "manager" ? "default" : "secondary"}>
+          {role}
+        </Badge>
+      );
+    },
   },
   {
-    accessorKey: "awayTeam",
-    header: "Away Team",
+    accessorKey: "lastLogin",
+    header: "Last Login",
+    cell: ({ row }) => {
+      const date = row.getValue("lastLogin");
+      return date ? new Date(date as string).toLocaleDateString() : "Never";
+    },
   },
   {
-    accessorKey: "score",
-    header: "Score",
+    accessorKey: "createdAt",
+    header: "Joined",
+    cell: ({ row }) => {
+      const date = new Date(row.getValue("createdAt"));
+      return date.toLocaleDateString();
+    },
+  },
+];
+
+const financialColumns: ColumnDef<any>[] = [
+  {
+    accessorKey: "type",
+    header: "Type",
+    cell: ({ row }) => {
+      const type = row.getValue("type") as string;
+      const variants: Record<string, any> = {
+        purchase: "default",
+        tournament_entry: "secondary",
+        admin_adjustment: "outline",
+      };
+      return <Badge variant={variants[type] || "outline"}>{type}</Badge>;
+    },
+  },
+  {
+    accessorKey: "amount",
+    header: "Amount",
+    cell: ({ row }) => {
+      const amount = row.getValue("amount") as number;
+      return <span className="font-mono">${amount.toLocaleString()}</span>;
+    },
+  },
+  {
+    accessorKey: "userId.username",
+    header: "User",
+    cell: ({ row }) => {
+      const user = row.original.userId;
+      return user?.username || "N/A";
+    },
   },
   {
     accessorKey: "status",
@@ -27,128 +99,405 @@ const matchReportColumns = [
     cell: ({ row }) => {
       const status = row.getValue("status") as string;
       return (
-        <Badge
-          variant={
-            status === "completed"
-              ? "success"
-              : status === "ongoing"
-              ? "secondary"
-              : "destructive"
-          }
-        >
+        <Badge variant={status === "completed" ? "default" : "destructive"}>
           {status}
         </Badge>
       );
     },
   },
   {
-    accessorKey: "date",
+    accessorKey: "createdAt",
     header: "Date",
-  },
-  {
-    id: "actions",
     cell: ({ row }) => {
-      return (
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm">
-            <Download className="h-4 w-4 mr-1" />
-            Export
-          </Button>
-          <Button variant="ghost" size="sm" className="text-destructive">
-            <Flag className="h-4 w-4 mr-1" />
-            Report
-          </Button>
-        </div>
-      );
+      const date = new Date(row.getValue("createdAt"));
+      return date.toLocaleDateString();
     },
   },
 ];
 
-const demoMatches = [
+const matchColumns: ColumnDef<any>[] = [
   {
-    matchId: "M123456",
-    homeTeam: "FC United",
-    awayTeam: "City Warriors",
-    score: "2 - 1",
-    status: "completed",
-    date: "2025-07-24",
+    accessorKey: "_id",
+    header: "Match ID",
+    cell: ({ row }) => {
+      const id = row.getValue("_id") as string;
+      return <span className="font-mono text-sm">{id.slice(-8)}</span>;
+    },
   },
   {
-    matchId: "M123457",
-    homeTeam: "Royal Eagles",
-    awayTeam: "Metro Knights",
-    score: "1 - 1",
-    status: "ongoing",
-    date: "2025-07-24",
+    accessorKey: "player1.username",
+    header: "Player 1",
   },
   {
-    matchId: "M123458",
-    homeTeam: "Valley FC",
-    awayTeam: "Mountain United",
-    score: "Cancelled",
-    status: "cancelled",
-    date: "2025-07-24",
+    accessorKey: "player2.username",
+    header: "Player 2",
+  },
+  {
+    accessorKey: "score",
+    header: "Score",
+    cell: ({ row }) => {
+      const score = row.original.score;
+      if (typeof score === "object" && score.player1 !== undefined) {
+        return `${score.player1} - ${score.player2}`;
+      }
+      return "TBD";
+    },
+  },
+  {
+    accessorKey: "status",
+    header: "Status",
+    cell: ({ row }) => {
+      const status = row.getValue("status") as string;
+      const variants: Record<string, any> = {
+        completed: "default",
+        in_progress: "secondary",
+        cancelled: "destructive",
+      };
+      return <Badge variant={variants[status]}>{status}</Badge>;
+    },
+  },
+  {
+    accessorKey: "duration",
+    header: "Duration",
+    cell: ({ row }) => {
+      const duration = row.getValue("duration") as number;
+      return duration ? `${duration} min` : "N/A";
+    },
   },
 ];
 
-export default function MatchReports() {
-  return (
-    <div className="p-6 space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold">Match Reports</h1>
-        <Button>
-          <Download className="mr-2 h-4 w-4" />
-          Export All Reports
-        </Button>
-      </div>
+const clubColumns: ColumnDef<any>[] = [
+  {
+    accessorKey: "clubName",
+    header: "Club Name",
+  },
+  {
+    accessorKey: "managerName",
+    header: "Manager",
+  },
+  {
+    accessorKey: "playerCount",
+    header: "Players",
+    cell: ({ row }) => {
+      const count = row.getValue("playerCount") as number;
+      return <span className="font-medium">{count}</span>;
+    },
+  },
+  {
+    accessorKey: "winRate",
+    header: "Win Rate",
+    cell: ({ row }) => {
+      const winRate = row.getValue("winRate") as string;
+      return <span className="font-mono">{winRate}</span>;
+    },
+  },
+  {
+    accessorKey: "tournamentsWon",
+    header: "Tournaments Won",
+  },
+  {
+    accessorKey: "totalEarnings",
+    header: "Total Earnings",
+    cell: ({ row }) => {
+      const earnings = row.getValue("totalEarnings") as number;
+      return <span className="font-mono">${earnings.toLocaleString()}</span>;
+    },
+  },
+];
 
-      <div className="grid gap-4 md:grid-cols-3">
+const systemLogColumns: ColumnDef<any>[] = [
+  {
+    accessorKey: "level",
+    header: "Level",
+    cell: ({ row }) => {
+      const level = row.getValue("level") as string;
+      const variants: Record<string, any> = {
+        INFO: "default",
+        WARNING: "secondary",
+        ERROR: "destructive",
+      };
+      return <Badge variant={variants[level]}>{level}</Badge>;
+    },
+  },
+  {
+    accessorKey: "category",
+    header: "Category",
+  },
+  {
+    accessorKey: "message",
+    header: "Message",
+    cell: ({ row }) => {
+      const message = row.getValue("message") as string;
+      return <span className="text-sm">{message}</span>;
+    },
+  },
+  {
+    accessorKey: "adminId.username",
+    header: "Admin",
+    cell: ({ row }) => {
+      const admin = row.original.adminId;
+      return admin?.username || "System";
+    },
+  },
+  {
+    accessorKey: "createdAt",
+    header: "Timestamp",
+    cell: ({ row }) => {
+      const date = new Date(row.getValue("createdAt"));
+      return date.toLocaleString();
+    },
+  },
+];
+
+export default function Reports() {
+  const [reportType, setReportType] = useState("overview");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const { data, isLoading, error } = useReports({
+    type: reportType,
+    startDate: startDate || undefined,
+    endDate: endDate || undefined,
+    page: currentPage,
+    limit: 10,
+  });
+
+  const reportData = data?.data;
+
+  const handleExport = () => {
+    // Implementation for exporting reports
+    console.log("Exporting report...");
+  };
+
+  const renderOverviewReport = () => (
+    <div className="space-y-6">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Matches</CardTitle>
-            <Activity className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Total Users</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">1,234</div>
-            <p className="text-xs text-muted-foreground">+48 from last month</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Active Matches
-            </CardTitle>
-            <Timer className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">23</div>
+            <div className="text-2xl font-bold">
+              {reportData?.overview?.totalUsers || 0}
+            </div>
             <p className="text-xs text-muted-foreground">
-              Currently in progress
+              {reportData?.overview?.activeUsers || 0} active this week
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Reports</CardTitle>
-            <Flag className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Total Clubs</CardTitle>
+            <Shield className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">15</div>
-            <p className="text-xs text-muted-foreground">Require attention</p>
+            <div className="text-2xl font-bold">
+              {reportData?.overview?.totalClubs || 0}
+            </div>
+            <p className="text-xs text-muted-foreground">Registered clubs</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Revenue</CardTitle>
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              ${(reportData?.overview?.revenue || 0).toLocaleString()}
+            </div>
+            <p className="text-xs text-muted-foreground">Total earnings</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Matches</CardTitle>
+            <Trophy className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {reportData?.overview?.totalMatches || 0}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Total matches played
+            </p>
           </CardContent>
         </Card>
       </div>
 
+      <div className="grid gap-6 md:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Recent Activity</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div>
+                <h4 className="text-sm font-medium mb-2">New Users</h4>
+                <div className="space-y-2">
+                  {reportData?.recentActivity?.newUsers?.map(
+                    (user: any, index: number) => (
+                      <div
+                        key={index}
+                        className="flex items-center justify-between text-sm"
+                      >
+                        <span>{user.username}</span>
+                        <Badge variant="outline">{user.role}</Badge>
+                      </div>
+                    )
+                  )}
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>System Alerts</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {reportData?.recentActivity?.systemAlerts?.map(
+                (alert: any, index: number) => (
+                  <div key={index} className="flex items-start gap-3">
+                    <AlertTriangle
+                      className={`h-4 w-4 mt-0.5 ${
+                        alert.type === "error"
+                          ? "text-red-500"
+                          : alert.type === "warning"
+                          ? "text-yellow-500"
+                          : "text-green-500"
+                      }`}
+                    />
+                    <div className="flex-1">
+                      <p className="text-sm">{alert.message}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(alert.timestamp).toLocaleString()}
+                      </p>
+                    </div>
+                  </div>
+                )
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+
+  const renderDataTable = (columns: ColumnDef<any>[], data: any[]) => (
+    <Card>
+      <CardHeader>
+        <CardTitle className="capitalize">
+          {reportType.replace("_", " ")} Report
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <DataTable columns={columns} data={data || []} />
+      </CardContent>
+    </Card>
+  );
+
+  if (error) {
+    return (
+      <div className="p-6">
+        <div className="text-center text-red-500">
+          Error loading reports: {error.message}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-6 space-y-6">
+      <div className="flex justify-between items-center">
+        <h1 className="text-3xl font-bold">Reports & Analytics</h1>
+        <Button onClick={handleExport}>
+          <Download className="mr-2 h-4 w-4" />
+          Export Report
+        </Button>
+      </div>
+
       <Card>
         <CardHeader>
-          <CardTitle>Recent Matches</CardTitle>
+          <CardTitle>Report Filters</CardTitle>
         </CardHeader>
         <CardContent>
-          <DataTable columns={matchReportColumns} data={demoMatches} />
+          <div className="grid gap-4 md:grid-cols-4">
+            <div className="space-y-2">
+              <Label htmlFor="report-type">Report Type</Label>
+              <Select value={reportType} onValueChange={setReportType}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select report type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="overview">Overview</SelectItem>
+                  <SelectItem value="user_activity">User Activity</SelectItem>
+                  <SelectItem value="financial">Financial</SelectItem>
+                  <SelectItem value="match_activity">Match Activity</SelectItem>
+                  <SelectItem value="club_performance">
+                    Club Performance
+                  </SelectItem>
+                  <SelectItem value="system_logs">System Logs</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="start-date">Start Date</Label>
+              <Input
+                id="start-date"
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="end-date">End Date</Label>
+              <Input
+                id="end-date"
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>&nbsp;</Label>
+              <Button
+                className="w-full"
+                onClick={() => setCurrentPage(1)}
+                disabled={isLoading}
+              >
+                <TrendingUp className="mr-2 h-4 w-4" />
+                Generate Report
+              </Button>
+            </div>
+          </div>
         </CardContent>
       </Card>
+
+      {isLoading ? (
+        <div className="text-center py-8">Loading report...</div>
+      ) : (
+        <div>
+          {reportType === "overview" && renderOverviewReport()}
+          {reportType === "user_activity" &&
+            renderDataTable(userActivityColumns, reportData?.activeUsers)}
+          {reportType === "financial" &&
+            renderDataTable(financialColumns, reportData?.transactions)}
+          {reportType === "match_activity" &&
+            renderDataTable(matchColumns, reportData?.matches)}
+          {reportType === "club_performance" &&
+            renderDataTable(clubColumns, reportData?.clubs)}
+          {reportType === "system_logs" &&
+            renderDataTable(systemLogColumns, reportData?.logs)}
+        </div>
+      )}
     </div>
   );
 }

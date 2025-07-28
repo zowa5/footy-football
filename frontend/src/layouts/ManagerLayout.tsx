@@ -1,14 +1,13 @@
 import { Outlet } from "react-router-dom";
 import { Sidebar } from "@/components/Sidebar";
+import { useAuth } from "@/hooks/useAuth";
 
-interface ManagerLayoutProps {
-  onLogout?: () => void;
-}
+export default function ManagerLayout() {
+  const { logout } = useAuth();
 
-export default function ManagerLayout({ onLogout }: ManagerLayoutProps) {
   return (
     <div className="flex min-h-screen w-full">
-      <Sidebar userRole="manager" onLogout={onLogout} />
+      <Sidebar userRole="manager" onLogout={logout} />
       <main className="flex-1">
         <Outlet />
       </main>
