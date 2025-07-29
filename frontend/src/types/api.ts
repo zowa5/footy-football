@@ -169,16 +169,48 @@ export interface Tournament {
   _id: string;
   name: string;
   description: string;
-  type: "knockout" | "league" | "group_stage";
-  status: "upcoming" | "active" | "completed";
+  type: "knockout" | "league" | "round_robin";
+  status:
+    | "registration_open"
+    | "registration_closed"
+    | "in_progress"
+    | "completed"
+    | "cancelled";
   maxParticipants: number;
   currentParticipants: number;
-  prizePool: number;
-  startDate: string;
-  endDate?: string;
-  participants: string[];
+  entryFee: number;
+  prizes: {
+    position: number;
+    coins: number;
+    title?: string;
+    badge?: string;
+  }[];
+  schedule: {
+    registrationStart: string;
+    registrationEnd: string;
+    tournamentStart: string;
+    tournamentEnd?: string;
+  };
+  participants: {
+    id: string;
+    username: string;
+    teamName: string;
+    joinedAt: string;
+    eliminated: boolean;
+    finalPosition?: number;
+  }[];
+  organizer?: {
+    id: string;
+    username: string;
+    email: string;
+  };
+  winner?: {
+    id: string;
+    username: string;
+  };
   matches: string[];
-  winner?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 // API Response Types

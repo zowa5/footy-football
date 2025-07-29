@@ -473,3 +473,125 @@ export const useReports = (params?: {
     enabled: !!localStorage.getItem("authToken"),
   });
 };
+
+export const useMatches = (params?: {
+  page?: number;
+  limit?: number;
+  matchday?: string;
+  status?: string;
+  type?: string;
+  club?: string;
+}) => {
+  return useQuery({
+    queryKey: ["admin", "matches", params],
+    queryFn: () => apiClient.getAllMatches(params),
+    enabled: !!localStorage.getItem("authToken"),
+    staleTime: 30000, // 30 seconds
+    refetchOnWindowFocus: false,
+  });
+};
+
+export const useAdminTournaments = (params?: {
+  page?: number;
+  limit?: number;
+  status?: string;
+  type?: string;
+}) => {
+  return useQuery({
+    queryKey: ["admin", "tournaments", params],
+    queryFn: () => apiClient.getAdminTournaments(params),
+    enabled: !!localStorage.getItem("authToken"),
+    staleTime: 30000, // 30 seconds
+    refetchOnWindowFocus: false,
+  });
+};
+
+export const useTournament = (id: string) => {
+  return useQuery({
+    queryKey: ["admin", "tournaments", id],
+    queryFn: () => apiClient.getTournament(id),
+    enabled: !!id && !!localStorage.getItem("authToken"),
+    staleTime: 30000,
+    refetchOnWindowFocus: false,
+  });
+};
+
+export const useCreateTournament = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (tournamentData: {
+      name: string;
+      description?: string;
+      type: string;
+      maxParticipants: number;
+      entryFee?: number;
+      prizes?: Array<{ position: number; coins: number; title?: string }>;
+      schedule: {
+        registrationStart: string;
+        registrationEnd: string;
+        tournamentStart: string;
+        tournamentEnd?: string;
+      };
+      status?: string;
+    }) => apiClient.createTournament(tournamentData),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "tournaments"] });
+      toast.success("Tournament berhasil dibuat!");
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Gagal membuat tournament");
+    },
+  });
+};
+
+export const useUpdateTournament = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      id,
+      ...tournamentData
+    }: {
+      id: string;
+      name?: string;
+      description?: string;
+      type?: string;
+      status?: string;
+      maxParticipants?: number;
+      entryFee?: number;
+      prizes?: Array<{ position: number; coins: number; title?: string }>;
+      schedule?: {
+        registrationStart: string;
+        registrationEnd: string;
+        tournamentStart: string;
+        tournamentEnd?: string;
+      };
+    }) => apiClient.updateTournament(id, tournamentData),
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "tournaments"] });
+      queryClient.invalidateQueries({
+        queryKey: ["admin", "tournaments", variables.id],
+      });
+      toast.success("Tournament berhasil diupdate!");
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Gagal mengupdate tournament");
+    },
+  });
+};
+
+export const useDeleteTournament = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: string) => apiClient.deleteTournament(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "tournaments"] });
+      toast.success("Tournament berhasil dihapus!");
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Gagal menghapus tournament");
+    },
+  });
+};

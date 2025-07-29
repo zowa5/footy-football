@@ -10,14 +10,17 @@ import { Match } from "../models/Match";
 import { Tournament } from "../models/Tournament";
 import { SystemLog, LogLevel, LogCategory } from "../models/SystemLog";
 import { StoreItem } from "../models/StoreItem";
-import { AuthRequest } from "../middleware/auth";
+import { AuthenticatedRequest } from "../middleware/auth";
 
 /**
  * @desc    Get system dashboard statistics
  * @route   GET /api/admin/dashboard
  * @access  Private (Admin only)
  */
-export const getDashboardStats = async (req: AuthRequest, res: Response) => {
+export const getDashboardStats = async (
+  req: AuthenticatedRequest,
+  res: Response
+) => {
   try {
     // Check admin role
     if (req.user?.role !== "super_admin") {
@@ -50,7 +53,11 @@ export const getDashboardStats = async (req: AuthRequest, res: Response) => {
     // Get transaction statistics
     const totalTransactions = await Transaction.countDocuments();
     const totalRevenue = await Transaction.aggregate([
-      { $match: { type: { $in: ["purchase", "tournament_entry"] } } },
+      {
+        $match: {
+          type: { $in: ["store_purchase", "match_reward", "admin_adjustment"] },
+        },
+      },
       { $group: { _id: null, total: { $sum: "$amount" } } },
     ]);
 
@@ -65,8 +72,8 @@ export const getDashboardStats = async (req: AuthRequest, res: Response) => {
       .limit(5);
 
     const recentMatches = await Match.find()
-      .populate("player1", "username")
-      .populate("player2", "username")
+      .populate("homeTeam.userId", "username")
+      .populate("awayTeam.userId", "username")
       .sort({ createdAt: -1 })
       .limit(5);
 
@@ -113,7 +120,7 @@ export const getDashboardStats = async (req: AuthRequest, res: Response) => {
  * @route   GET /api/admin/users
  * @access  Private (Admin only)
  */
-export const getAllUsers = async (req: AuthRequest, res: Response) => {
+export const getAllUsers = async (req: AuthenticatedRequest, res: Response) => {
   try {
     if (req.user?.role !== "super_admin") {
       return res
@@ -167,7 +174,7 @@ export const getAllUsers = async (req: AuthRequest, res: Response) => {
  * @route   PUT /api/admin/users/:id
  * @access  Private (Admin only)
  */
-export const updateUser = async (req: AuthRequest, res: Response) => {
+export const updateUser = async (req: AuthenticatedRequest, res: Response) => {
   try {
     if (req.user?.role !== "super_admin") {
       return res
@@ -196,7 +203,7 @@ export const updateUser = async (req: AuthRequest, res: Response) => {
       category: LogCategory.USER_MANAGEMENT,
       message: `User ${user.username} updated by admin`,
       details: `Updated fields: ${Object.keys(updates).join(", ")}`,
-      adminId: req.user._id,
+      adminId: req.user.id,
       userId: user._id,
     });
     await systemLog.save();
@@ -219,7 +226,7 @@ export const updateUser = async (req: AuthRequest, res: Response) => {
  * @route   DELETE /api/admin/users/:id
  * @access  Private (Admin only)
  */
-export const deleteUser = async (req: AuthRequest, res: Response) => {
+export const deleteUser = async (req: AuthenticatedRequest, res: Response) => {
   try {
     if (req.user?.role !== "super_admin") {
       return res
@@ -235,7 +242,7 @@ export const deleteUser = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    if (userToDelete.role === "admin") {
+    if (userToDelete.role === "super_admin") {
       return res.status(403).json({ message: "Cannot delete admin users" });
     }
 
@@ -247,7 +254,7 @@ export const deleteUser = async (req: AuthRequest, res: Response) => {
       category: LogCategory.USER_MANAGEMENT,
       message: `User ${userToDelete.username} deleted by admin`,
       details: `Deleted user ID: ${id}`,
-      adminId: req.user._id,
+      adminId: req.user.id,
     });
     await systemLog.save();
 
@@ -268,7 +275,10 @@ export const deleteUser = async (req: AuthRequest, res: Response) => {
  * @route   POST /api/admin/users/:id/add-coins
  * @access  Private (Admin only)
  */
-export const addCoinsToUser = async (req: AuthRequest, res: Response) => {
+export const addCoinsToUser = async (
+  req: AuthenticatedRequest,
+  res: Response
+) => {
   try {
     if (req.user?.role !== "super_admin") {
       return res
@@ -310,7 +320,7 @@ export const addCoinsToUser = async (req: AuthRequest, res: Response) => {
       category: LogCategory.USER_MANAGEMENT,
       message: `${amount} coins added to user ${user.username} by admin`,
       details: reason || "Coins added by admin",
-      adminId: req.user._id,
+      adminId: req.user.id,
       userId: user._id,
     });
     await systemLog.save();
@@ -333,7 +343,10 @@ export const addCoinsToUser = async (req: AuthRequest, res: Response) => {
  * @route   GET /api/admin/transactions
  * @access  Private (Admin only)
  */
-export const getAllTransactions = async (req: AuthRequest, res: Response) => {
+export const getAllTransactions = async (
+  req: AuthenticatedRequest,
+  res: Response
+) => {
   try {
     if (req.user?.role !== "super_admin") {
       return res
@@ -381,7 +394,10 @@ export const getAllTransactions = async (req: AuthRequest, res: Response) => {
  * @route   GET /api/admin/logs
  * @access  Private (Admin only)
  */
-export const getSystemLogs = async (req: AuthRequest, res: Response) => {
+export const getSystemLogs = async (
+  req: AuthenticatedRequest,
+  res: Response
+) => {
   try {
     if (req.user?.role !== "super_admin") {
       return res
@@ -426,7 +442,10 @@ export const getSystemLogs = async (req: AuthRequest, res: Response) => {
  * @route   POST /api/admin/store-items
  * @access  Private (Admin only)
  */
-export const createStoreItem = async (req: AuthRequest, res: Response) => {
+export const createStoreItem = async (
+  req: AuthenticatedRequest,
+  res: Response
+) => {
   try {
     if (req.user?.role !== "super_admin") {
       return res
@@ -443,7 +462,7 @@ export const createStoreItem = async (req: AuthRequest, res: Response) => {
       category: LogCategory.STORE,
       message: `Store item ${storeItem.name} created by admin`,
       details: `Item ID: ${storeItem._id}`,
-      adminId: req.user._id,
+      adminId: req.user.id,
     });
     await systemLog.save();
 
@@ -462,7 +481,10 @@ export const createStoreItem = async (req: AuthRequest, res: Response) => {
  * @route   PUT /api/admin/store-items/:id
  * @access  Private (Admin only)
  */
-export const updateStoreItem = async (req: AuthRequest, res: Response) => {
+export const updateStoreItem = async (
+  req: AuthenticatedRequest,
+  res: Response
+) => {
   try {
     if (req.user?.role !== "super_admin") {
       return res
@@ -488,7 +510,7 @@ export const updateStoreItem = async (req: AuthRequest, res: Response) => {
       category: LogCategory.STORE,
       message: `Store item ${storeItem.name} updated by admin`,
       details: `Updated fields: ${Object.keys(updates).join(", ")}`,
-      adminId: req.user._id,
+      adminId: req.user.id,
     });
     await systemLog.save();
 
@@ -507,7 +529,10 @@ export const updateStoreItem = async (req: AuthRequest, res: Response) => {
  * @route   DELETE /api/admin/store-items/:id
  * @access  Private (Admin only)
  */
-export const deleteStoreItem = async (req: AuthRequest, res: Response) => {
+export const deleteStoreItem = async (
+  req: AuthenticatedRequest,
+  res: Response
+) => {
   try {
     if (req.user?.role !== "super_admin") {
       return res
@@ -528,7 +553,7 @@ export const deleteStoreItem = async (req: AuthRequest, res: Response) => {
       category: LogCategory.STORE,
       message: `Store item ${storeItem.name} deleted by admin`,
       details: `Deleted item ID: ${id}`,
-      adminId: req.user._id,
+      adminId: req.user.id,
     });
     await systemLog.save();
 
@@ -549,7 +574,7 @@ export const deleteStoreItem = async (req: AuthRequest, res: Response) => {
  * @route   POST /api/admin/clubs
  * @access  Private (Admin only)
  */
-export const createClub = async (req: AuthRequest, res: Response) => {
+export const createClub = async (req: AuthenticatedRequest, res: Response) => {
   try {
     if (req.user?.role !== "super_admin") {
       return res
@@ -608,7 +633,7 @@ export const createClub = async (req: AuthRequest, res: Response) => {
       category: LogCategory.USER_MANAGEMENT,
       message: `New club ${clubName} created by admin`,
       details: `Manager: ${username}, Email: ${email}`,
-      adminId: req.user._id,
+      adminId: req.user.id,
       userId: newManager._id,
     });
     await systemLog.save();
@@ -640,7 +665,7 @@ export const createClub = async (req: AuthRequest, res: Response) => {
  * @route   GET /api/admin/clubs
  * @access  Private (Admin only)
  */
-export const getAllClubs = async (req: AuthRequest, res: Response) => {
+export const getAllClubs = async (req: AuthenticatedRequest, res: Response) => {
   try {
     if (req.user?.role !== "super_admin") {
       return res
@@ -719,7 +744,7 @@ export const getAllClubs = async (req: AuthRequest, res: Response) => {
  * @route   PUT /api/admin/clubs/:id
  * @access  Private (Admin only)
  */
-export const updateClub = async (req: AuthRequest, res: Response) => {
+export const updateClub = async (req: AuthenticatedRequest, res: Response) => {
   try {
     if (req.user?.role !== "super_admin") {
       return res
@@ -755,7 +780,7 @@ export const updateClub = async (req: AuthRequest, res: Response) => {
         clubName || manager.managerInfo?.clubName
       } updated by admin`,
       details: `Updated manager: ${manager.username}`,
-      adminId: req.user._id,
+      adminId: req.user.id,
       userId: manager._id,
     });
     await systemLog.save();
@@ -786,7 +811,7 @@ export const updateClub = async (req: AuthRequest, res: Response) => {
  * @route   DELETE /api/admin/clubs/:id
  * @access  Private (Admin only)
  */
-export const deleteClub = async (req: AuthRequest, res: Response) => {
+export const deleteClub = async (req: AuthenticatedRequest, res: Response) => {
   try {
     if (req.user?.role !== "super_admin") {
       return res
@@ -812,7 +837,7 @@ export const deleteClub = async (req: AuthRequest, res: Response) => {
       category: LogCategory.USER_MANAGEMENT,
       message: `Club ${clubName} deleted by admin`,
       details: `Deleted manager: ${manager.username}`,
-      adminId: req.user._id,
+      adminId: req.user.id,
     });
     await systemLog.save();
 
@@ -828,7 +853,10 @@ export const deleteClub = async (req: AuthRequest, res: Response) => {
   }
 };
 
-export const getSystemStats = async (req: AuthRequest, res: Response) => {
+export const getSystemStats = async (
+  req: AuthenticatedRequest,
+  res: Response
+) => {
   try {
     if (req.user?.role !== "super_admin") {
       return res
@@ -899,11 +927,206 @@ export const getSystemStats = async (req: AuthRequest, res: Response) => {
 };
 
 /**
+ * @desc    Get all matches with details for reports
+ * @route   GET /api/admin/matches
+ * @access  Private (Admin only)
+ */
+export const getAllMatches = async (
+  req: AuthenticatedRequest,
+  res: Response
+) => {
+  try {
+    if (req.user?.role !== "super_admin") {
+      return res
+        .status(403)
+        .json({ message: "Access denied. Super Admin role required." });
+    }
+
+    const { page = 1, limit = 10, matchday, status, type, club } = req.query;
+    const skip = (Number(page) - 1) * Number(limit);
+
+    // Build query
+    const query: any = {};
+
+    if (matchday) {
+      // Filter by specific matchday (date)
+      const startOfDay = new Date(matchday as string);
+      startOfDay.setHours(0, 0, 0, 0);
+      const endOfDay = new Date(matchday as string);
+      endOfDay.setHours(23, 59, 59, 999);
+
+      query.scheduledAt = {
+        $gte: startOfDay,
+        $lte: endOfDay,
+      };
+    }
+
+    if (status) {
+      query.status = status;
+    }
+
+    if (type) {
+      query.type = type;
+    }
+
+    // If club filter is provided, we'll need to filter after population
+    // since club information is in the populated user data
+    let matchQuery = Match.find(query)
+      .populate("homeTeam.userId", "username playerInfo managerInfo")
+      .populate("awayTeam.userId", "username playerInfo managerInfo")
+      .populate("tournamentId", "name")
+      .sort({ scheduledAt: -1 });
+
+    // Get all matches first if club filter is needed
+    let matches;
+    let total;
+
+    if (club) {
+      // Get all matches first, then filter by club
+      const allMatches = await matchQuery.exec();
+
+      // Filter by club
+      const filteredMatches = allMatches.filter((match) => {
+        const homeClub =
+          (match.homeTeam.userId as any).playerInfo?.club ||
+          (match.homeTeam.userId as any).managerInfo?.clubName;
+        const awayClub =
+          (match.awayTeam.userId as any).playerInfo?.club ||
+          (match.awayTeam.userId as any).managerInfo?.clubName;
+        return homeClub === club || awayClub === club;
+      });
+
+      total = filteredMatches.length;
+      // Apply pagination to filtered results
+      matches = filteredMatches.slice(skip, skip + Number(limit));
+    } else {
+      // No club filter, use normal pagination
+      matches = await matchQuery.skip(skip).limit(Number(limit)).exec();
+      total = await Match.countDocuments(query);
+    }
+
+    // Get unique matchdays for filter options
+    const matchDays = await Match.aggregate([
+      {
+        $group: {
+          _id: {
+            $dateToString: {
+              format: "%Y-%m-%d",
+              date: "$scheduledAt",
+            },
+          },
+          count: { $sum: 1 },
+        },
+      },
+      { $sort: { _id: -1 } },
+      { $limit: 30 }, // Last 30 days
+    ]);
+
+    // Process matches with detailed statistics
+    const processedMatches = matches.map((match) => {
+      const homeTeam = {
+        id: (match.homeTeam.userId as any)._id,
+        name: match.homeTeam.teamName,
+        username: (match.homeTeam.userId as any).username,
+        type: (match.homeTeam.userId as any).playerInfo ? "player" : "manager",
+        clubName:
+          (match.homeTeam.userId as any).playerInfo?.club ||
+          (match.homeTeam.userId as any).managerInfo?.clubName,
+      };
+
+      const awayTeam = {
+        id: (match.awayTeam.userId as any)._id,
+        name: match.awayTeam.teamName,
+        username: (match.awayTeam.userId as any).username,
+        type: (match.awayTeam.userId as any).playerInfo ? "player" : "manager",
+        clubName:
+          (match.awayTeam.userId as any).playerInfo?.club ||
+          (match.awayTeam.userId as any).managerInfo?.clubName,
+      };
+
+      // Calculate match statistics
+      const events = match.result?.events || [];
+      const goals = events.filter((e) => e.type === "goal");
+      const yellowCards = events.filter((e) => e.type === "yellow_card");
+      const redCards = events.filter((e) => e.type === "red_card");
+      const substitutions = events.filter((e) => e.type === "substitution");
+
+      return {
+        _id: match._id,
+        homeTeam,
+        awayTeam,
+        type: match.type,
+        status: match.status,
+        scheduledAt: match.scheduledAt,
+        startedAt: match.startedAt,
+        completedAt: match.completedAt,
+        matchday: match.scheduledAt.toISOString().split("T")[0],
+        tournament: (match.tournamentId as any)
+          ? {
+              id: (match.tournamentId as any)._id,
+              name: (match.tournamentId as any).name,
+            }
+          : null,
+        result: match.result
+          ? {
+              homeScore: match.result.homeScore,
+              awayScore: match.result.awayScore,
+              winner: match.result.winner,
+              duration: match.result.duration,
+              events: match.result.events,
+            }
+          : null,
+        statistics: {
+          totalGoals: goals.length,
+          yellowCards: yellowCards.length,
+          redCards: redCards.length,
+          substitutions: substitutions.length,
+          events: events.length,
+        },
+        rewards: match.rewards,
+      };
+    });
+
+    res.json({
+      success: true,
+      data: {
+        matches: processedMatches,
+        matchDays: matchDays.map((md) => ({ date: md._id, count: md.count })),
+        pagination: {
+          total: total,
+          page: Number(page),
+          pages: Math.ceil(total / Number(limit)),
+          limit: Number(limit),
+        },
+        summary: {
+          totalMatches: total,
+          completedMatches: await Match.countDocuments({
+            ...query,
+            status: "completed",
+          }),
+          inProgressMatches: await Match.countDocuments({
+            ...query,
+            status: "in_progress",
+          }),
+          scheduledMatches: await Match.countDocuments({
+            ...query,
+            status: "scheduled",
+          }),
+        },
+      },
+    });
+  } catch (error: any) {
+    console.error("Get all matches error:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+/**
  * @desc    Get comprehensive reports data
  * @route   GET /api/admin/reports
  * @access  Private (Admin only)
  */
-export const getReports = async (req: AuthRequest, res: Response) => {
+export const getReports = async (req: AuthenticatedRequest, res: Response) => {
   try {
     if (req.user?.role !== "super_admin") {
       return res
@@ -997,6 +1220,7 @@ export const getReports = async (req: AuthRequest, res: Response) => {
                 $in: [
                   TransactionType.STORE_PURCHASE,
                   TransactionType.MATCH_REWARD,
+                  TransactionType.ADMIN_ADJUSTMENT,
                 ],
               },
             },
@@ -1033,44 +1257,45 @@ export const getReports = async (req: AuthRequest, res: Response) => {
         break;
 
       case "match_activity":
-        // Match activity report (using dummy data since we don't have enough match data)
+        // Match activity report - now using real match data with new schema
         const matches = await Match.find({
           createdAt: { $gte: start, $lte: end },
         })
-          .populate("player1", "username")
-          .populate("player2", "username")
+          .populate("homeTeam.userId", "username")
+          .populate("awayTeam.userId", "username")
           .sort({ createdAt: -1 })
           .skip(skip)
           .limit(Number(limit));
 
-        // Generate dummy matches for demonstration
-        const dummyMatches = Array.from({ length: 20 }, (_, i) => ({
-          _id: `match_${i + 1}`,
-          player1: { username: `Player${i + 1}` },
-          player2: { username: `Player${i + 2}` },
-          status: ["completed", "in_progress", "cancelled"][
-            Math.floor(Math.random() * 3)
-          ],
-          score: {
-            player1: Math.floor(Math.random() * 5),
-            player2: Math.floor(Math.random() * 5),
+        // Process matches with the new schema
+        const processedMatches = matches.map((match) => ({
+          _id: match._id,
+          homeTeam: {
+            username: (match.homeTeam.userId as any).username,
+            teamName: match.homeTeam.teamName,
           },
-          createdAt: new Date(
-            Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000
-          ),
-          duration: Math.floor(Math.random() * 30) + 10, // 10-40 minutes
-          tournament: Math.random() > 0.5 ? `Tournament_${(i % 5) + 1}` : null,
+          awayTeam: {
+            username: (match.awayTeam.userId as any).username,
+            teamName: match.awayTeam.teamName,
+          },
+          status: match.status,
+          score: match.result
+            ? {
+                home: match.result.homeScore,
+                away: match.result.awayScore,
+              }
+            : null,
+          createdAt: match.createdAt,
+          duration: match.result?.duration,
+          tournament: match.tournamentId,
         }));
 
         reportData = {
-          matches: matches.length > 0 ? matches : dummyMatches,
+          matches: processedMatches,
           summary: {
-            totalMatches:
-              matches.length > 0 ? matches.length : dummyMatches.length,
-            completedMatches:
-              matches.length > 0
-                ? matches.filter((m) => m.status === "completed").length
-                : dummyMatches.filter((m) => m.status === "completed").length,
+            totalMatches: matches.length,
+            completedMatches: matches.filter((m) => m.status === "completed")
+              .length,
             averageMatchDuration: 25, // minutes
           },
         };
@@ -1222,6 +1447,7 @@ export const getReports = async (req: AuthRequest, res: Response) => {
                     $in: [
                       TransactionType.STORE_PURCHASE,
                       TransactionType.MATCH_REWARD,
+                      TransactionType.ADMIN_ADJUSTMENT,
                     ],
                   },
                 },
@@ -1243,6 +1469,460 @@ export const getReports = async (req: AuthRequest, res: Response) => {
     });
   } catch (error: any) {
     console.error("Get reports error:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+/**
+ * @desc    Get all tournaments for admin management
+ * @route   GET /api/admin/tournaments
+ * @access  Private (Admin only)
+ */
+export const getAllTournaments = async (
+  req: AuthenticatedRequest,
+  res: Response
+) => {
+  try {
+    if (req.user?.role !== "super_admin") {
+      return res
+        .status(403)
+        .json({ message: "Access denied. Super Admin role required." });
+    }
+
+    const { page = 1, limit = 10, status, type } = req.query;
+    const skip = (Number(page) - 1) * Number(limit);
+
+    // Build query
+    const query: any = {};
+    if (status) {
+      query.status = status;
+    }
+    if (type) {
+      query.type = type;
+    }
+
+    const tournaments = await Tournament.find(query)
+      .populate("organizerId", "username email")
+      .populate("winner", "username")
+      .populate("participants.userId", "username")
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(Number(limit));
+
+    const total = await Tournament.countDocuments(query);
+
+    // Process tournaments with additional stats
+    const processedTournaments = tournaments.map((tournament) => ({
+      _id: tournament._id,
+      name: tournament.name,
+      description: tournament.description,
+      type: tournament.type,
+      status: tournament.status,
+      maxParticipants: tournament.maxParticipants,
+      currentParticipants: tournament.participants.length,
+      entryFee: tournament.entryFee,
+      prizes: tournament.prizes,
+      schedule: tournament.schedule,
+      organizer: tournament.organizerId
+        ? {
+            id: (tournament.organizerId as any)._id,
+            username: (tournament.organizerId as any).username,
+            email: (tournament.organizerId as any).email,
+          }
+        : null,
+      winner: tournament.winner
+        ? {
+            id: (tournament.winner as any)._id,
+            username: (tournament.winner as any).username,
+          }
+        : null,
+      participants: tournament.participants.map((p) => ({
+        id: (p.userId as any)._id,
+        username: (p.userId as any).username,
+        teamName: p.teamName,
+        joinedAt: p.joinedAt,
+        eliminated: p.eliminated,
+        finalPosition: p.finalPosition,
+      })),
+      createdAt: tournament.createdAt,
+      updatedAt: tournament.updatedAt,
+    }));
+
+    res.json({
+      success: true,
+      data: {
+        tournaments: processedTournaments,
+        pagination: {
+          total,
+          page: Number(page),
+          pages: Math.ceil(total / Number(limit)),
+          limit: Number(limit),
+        },
+        summary: {
+          totalTournaments: total,
+          activeTournaments: await Tournament.countDocuments({
+            status: "in_progress",
+          }),
+          upcomingTournaments: await Tournament.countDocuments({
+            status: "registration_open",
+          }),
+          completedTournaments: await Tournament.countDocuments({
+            status: "completed",
+          }),
+        },
+      },
+    });
+  } catch (error: any) {
+    console.error("Get all tournaments error:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+/**
+ * @desc    Create new tournament
+ * @route   POST /api/admin/tournaments
+ * @access  Private (Admin only)
+ */
+export const createTournament = async (
+  req: AuthenticatedRequest,
+  res: Response
+) => {
+  try {
+    if (req.user?.role !== "super_admin") {
+      return res
+        .status(403)
+        .json({ message: "Access denied. Super Admin role required." });
+    }
+
+    const {
+      name,
+      description,
+      type,
+      maxParticipants,
+      entryFee,
+      prizes,
+      schedule,
+      status = "registration_open",
+    } = req.body;
+
+    // Validation
+    if (!name || !type || !maxParticipants || !schedule) {
+      return res.status(400).json({
+        message: "Name, type, maxParticipants, and schedule are required",
+      });
+    }
+
+    // Check if tournament name already exists
+    const existingTournament = await Tournament.findOne({ name });
+    if (existingTournament) {
+      return res.status(400).json({
+        message: "Tournament with this name already exists",
+      });
+    }
+
+    const tournament = new Tournament({
+      name,
+      description,
+      type,
+      status,
+      maxParticipants,
+      entryFee: entryFee || 0,
+      prizes: prizes || [],
+      schedule: {
+        registrationStart: new Date(schedule.registrationStart),
+        registrationEnd: new Date(schedule.registrationEnd),
+        tournamentStart: new Date(schedule.tournamentStart),
+        tournamentEnd: schedule.tournamentEnd
+          ? new Date(schedule.tournamentEnd)
+          : undefined,
+      },
+      organizerId: req.user.id,
+      participants: [],
+      matches: [],
+    });
+
+    await tournament.save();
+
+    // Log the action
+    const systemLog = new SystemLog({
+      level: LogLevel.INFO,
+      category: LogCategory.ADMIN_ACTION,
+      message: `Tournament created: ${tournament.name}`,
+      details: `Type: ${tournament.type}, Max participants: ${tournament.maxParticipants}`,
+      adminId: req.user.id,
+    });
+    await systemLog.save();
+
+    // Populate organizer info
+    await tournament.populate("organizerId", "username email");
+
+    res.status(201).json({
+      success: true,
+      data: {
+        message: "Tournament created successfully",
+        tournament: {
+          _id: tournament._id,
+          name: tournament.name,
+          description: tournament.description,
+          type: tournament.type,
+          status: tournament.status,
+          maxParticipants: tournament.maxParticipants,
+          currentParticipants: 0,
+          entryFee: tournament.entryFee,
+          prizes: tournament.prizes,
+          schedule: tournament.schedule,
+          organizer: {
+            id: (tournament.organizerId as any)._id,
+            username: (tournament.organizerId as any).username,
+            email: (tournament.organizerId as any).email,
+          },
+          participants: [],
+          createdAt: tournament.createdAt,
+          updatedAt: tournament.updatedAt,
+        },
+      },
+    });
+  } catch (error: any) {
+    console.error("Create tournament error:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+/**
+ * @desc    Update tournament
+ * @route   PUT /api/admin/tournaments/:id
+ * @access  Private (Admin only)
+ */
+export const updateTournament = async (
+  req: AuthenticatedRequest,
+  res: Response
+) => {
+  try {
+    if (req.user?.role !== "super_admin") {
+      return res
+        .status(403)
+        .json({ message: "Access denied. Super Admin role required." });
+    }
+
+    const { id } = req.params;
+    const {
+      name,
+      description,
+      type,
+      status,
+      maxParticipants,
+      entryFee,
+      prizes,
+      schedule,
+    } = req.body;
+
+    const tournament = await Tournament.findById(id);
+    if (!tournament) {
+      return res.status(404).json({ message: "Tournament not found" });
+    }
+
+    // Check if new name conflicts with existing tournament
+    if (name && name !== tournament.name) {
+      const existingTournament = await Tournament.findOne({ name });
+      if (existingTournament) {
+        return res.status(400).json({
+          message: "Tournament with this name already exists",
+        });
+      }
+    }
+
+    // Build update object
+    const updates: any = {};
+    if (name) updates.name = name;
+    if (description !== undefined) updates.description = description;
+    if (type) updates.type = type;
+    if (status) updates.status = status;
+    if (maxParticipants) updates.maxParticipants = maxParticipants;
+    if (entryFee !== undefined) updates.entryFee = entryFee;
+    if (prizes) updates.prizes = prizes;
+    if (schedule) {
+      updates.schedule = {
+        registrationStart: new Date(schedule.registrationStart),
+        registrationEnd: new Date(schedule.registrationEnd),
+        tournamentStart: new Date(schedule.tournamentStart),
+        tournamentEnd: schedule.tournamentEnd
+          ? new Date(schedule.tournamentEnd)
+          : undefined,
+      };
+    }
+
+    const updatedTournament = await Tournament.findByIdAndUpdate(id, updates, {
+      new: true,
+    }).populate("organizerId", "username email");
+
+    // Log the action
+    const systemLog = new SystemLog({
+      level: LogLevel.INFO,
+      category: LogCategory.ADMIN_ACTION,
+      message: `Tournament updated: ${updatedTournament!.name}`,
+      details: `Updated fields: ${Object.keys(updates).join(", ")}`,
+      adminId: req.user.id,
+    });
+    await systemLog.save();
+
+    res.json({
+      success: true,
+      data: {
+        message: "Tournament updated successfully",
+        tournament: {
+          _id: updatedTournament!._id,
+          name: updatedTournament!.name,
+          description: updatedTournament!.description,
+          type: updatedTournament!.type,
+          status: updatedTournament!.status,
+          maxParticipants: updatedTournament!.maxParticipants,
+          currentParticipants: updatedTournament!.participants.length,
+          entryFee: updatedTournament!.entryFee,
+          prizes: updatedTournament!.prizes,
+          schedule: updatedTournament!.schedule,
+          organizer: {
+            id: (updatedTournament!.organizerId as any)._id,
+            username: (updatedTournament!.organizerId as any).username,
+            email: (updatedTournament!.organizerId as any).email,
+          },
+          participants: updatedTournament!.participants,
+          createdAt: updatedTournament!.createdAt,
+          updatedAt: updatedTournament!.updatedAt,
+        },
+      },
+    });
+  } catch (error: any) {
+    console.error("Update tournament error:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+/**
+ * @desc    Delete tournament
+ * @route   DELETE /api/admin/tournaments/:id
+ * @access  Private (Admin only)
+ */
+export const deleteTournament = async (
+  req: AuthenticatedRequest,
+  res: Response
+) => {
+  try {
+    if (req.user?.role !== "super_admin") {
+      return res
+        .status(403)
+        .json({ message: "Access denied. Super Admin role required." });
+    }
+
+    const { id } = req.params;
+
+    const tournament = await Tournament.findById(id);
+    if (!tournament) {
+      return res.status(404).json({ message: "Tournament not found" });
+    }
+
+    // Don't allow deleting tournaments that are in progress
+    if (tournament.status === "in_progress") {
+      return res.status(400).json({
+        message: "Cannot delete tournaments that are in progress",
+      });
+    }
+
+    await Tournament.findByIdAndDelete(id);
+
+    // Log the action
+    const systemLog = new SystemLog({
+      level: LogLevel.INFO,
+      category: LogCategory.ADMIN_ACTION,
+      message: `Tournament deleted: ${tournament.name}`,
+      details: `Type: ${tournament.type}, Status: ${tournament.status}`,
+      adminId: req.user.id,
+    });
+    await systemLog.save();
+
+    res.json({
+      success: true,
+      data: {
+        message: "Tournament deleted successfully",
+      },
+    });
+  } catch (error: any) {
+    console.error("Delete tournament error:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+/**
+ * @desc    Get tournament by ID
+ * @route   GET /api/admin/tournaments/:id
+ * @access  Private (Admin only)
+ */
+export const getTournamentById = async (
+  req: AuthenticatedRequest,
+  res: Response
+) => {
+  try {
+    if (req.user?.role !== "super_admin") {
+      return res
+        .status(403)
+        .json({ message: "Access denied. Super Admin role required." });
+    }
+
+    const { id } = req.params;
+
+    const tournament = await Tournament.findById(id)
+      .populate("organizerId", "username email")
+      .populate("winner", "username")
+      .populate("participants.userId", "username");
+
+    if (!tournament) {
+      return res.status(404).json({ message: "Tournament not found" });
+    }
+
+    const processedTournament = {
+      _id: tournament._id,
+      name: tournament.name,
+      description: tournament.description,
+      type: tournament.type,
+      status: tournament.status,
+      maxParticipants: tournament.maxParticipants,
+      currentParticipants: tournament.participants.length,
+      entryFee: tournament.entryFee,
+      prizes: tournament.prizes,
+      schedule: tournament.schedule,
+      organizer: tournament.organizerId
+        ? {
+            id: (tournament.organizerId as any)._id,
+            username: (tournament.organizerId as any).username,
+            email: (tournament.organizerId as any).email,
+          }
+        : null,
+      winner: tournament.winner
+        ? {
+            id: (tournament.winner as any)._id,
+            username: (tournament.winner as any).username,
+          }
+        : null,
+      participants: tournament.participants.map((p) => ({
+        id: (p.userId as any)._id,
+        username: (p.userId as any).username,
+        teamName: p.teamName,
+        joinedAt: p.joinedAt,
+        eliminated: p.eliminated,
+        finalPosition: p.finalPosition,
+      })),
+      matches: tournament.matches,
+      createdAt: tournament.createdAt,
+      updatedAt: tournament.updatedAt,
+    };
+
+    res.json({
+      success: true,
+      data: {
+        tournament: processedTournament,
+      },
+    });
+  } catch (error: any) {
+    console.error("Get tournament by ID error:", error);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };

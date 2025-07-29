@@ -12,6 +12,7 @@ import {
   Globe,
   Bell,
   LogOut,
+  TrendingUp,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -21,6 +22,7 @@ const superAdminNavItems = [
   { title: "User Management", url: "/superadmin/users", icon: Users },
   { title: "Clubs Management", url: "/superadmin/clubs", icon: Shield },
   { title: "Match Reports", url: "/superadmin/reports", icon: FileText },
+  { title: "Analytics", url: "/superadmin/analytics", icon: TrendingUp },
   { title: "Tournaments", url: "/superadmin/tournaments", icon: Globe },
   { title: "System Logs", url: "/superadmin/logs", icon: Database },
   { title: "Notifications", url: "/superadmin/notifications", icon: Bell },

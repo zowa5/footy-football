@@ -29,6 +29,7 @@ export interface IPlayerInfo {
 // Manager info interface
 export interface IManagerInfo {
   clubName: string;
+  clubLogo?: string;
   budget: number;
   reputation: number;
   experience: number;
@@ -46,6 +47,7 @@ export interface IUserStats {
   redCards: number;
   tournamentsWon: number;
   skillPoints: number;
+  totalEarnings: number;
 }
 
 // Base user interface
@@ -62,6 +64,7 @@ export interface IUser extends Document {
   energy: number;
   stats: IUserStats;
   isActive: boolean;
+  lastLogin?: Date;
   createdAt: Date;
   updatedAt: Date;
   comparePassword(candidatePassword: string): Promise<boolean>;
@@ -127,6 +130,7 @@ const playerInfoSchema = new Schema<IPlayerInfo>({
 // Manager info schema
 const managerInfoSchema = new Schema<IManagerInfo>({
   clubName: { type: String, required: true },
+  clubLogo: { type: String, default: "" },
   budget: { type: Number, required: true, min: 0 },
   reputation: { type: Number, required: true, min: 0, max: 100 },
   experience: { type: Number, required: true, min: 0 },
@@ -144,6 +148,7 @@ const userStatsSchema = new Schema<IUserStats>({
   redCards: { type: Number, default: 0 },
   tournamentsWon: { type: Number, default: 0 },
   skillPoints: { type: Number, default: 0 },
+  totalEarnings: { type: Number, default: 0 },
 });
 
 // Main user schema
@@ -214,6 +219,10 @@ const userSchema = new Schema<IUser>(
     isActive: {
       type: Boolean,
       default: true,
+    },
+    lastLogin: {
+      type: Date,
+      default: null,
     },
   },
   {

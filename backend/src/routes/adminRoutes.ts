@@ -16,6 +16,12 @@ import {
   updateClub,
   deleteClub,
   getReports,
+  getAllMatches,
+  getAllTournaments,
+  createTournament,
+  updateTournament,
+  deleteTournament,
+  getTournamentById,
 } from "../controllers/adminController";
 import { authenticate } from "../middleware/auth";
 
@@ -44,6 +50,48 @@ router.get("/stats", getSystemStats);
  * @access  Private (Admin only)
  */
 router.get("/reports", getReports);
+
+/**
+ * @route   GET /api/admin/matches
+ * @desc    Get all matches with details
+ * @access  Private (Admin only)
+ */
+router.get("/matches", getAllMatches);
+
+/**
+ * @route   GET /api/admin/tournaments
+ * @desc    Get all tournaments for admin management
+ * @access  Private (Admin only)
+ */
+router.get("/tournaments", getAllTournaments);
+
+/**
+ * @route   POST /api/admin/tournaments
+ * @desc    Create a new tournament
+ * @access  Private (Admin only)
+ */
+router.post("/tournaments", createTournament);
+
+/**
+ * @route   GET /api/admin/tournaments/:id
+ * @desc    Get tournament by ID
+ * @access  Private (Admin only)
+ */
+router.get("/tournaments/:id", getTournamentById);
+
+/**
+ * @route   PUT /api/admin/tournaments/:id
+ * @desc    Update tournament
+ * @access  Private (Admin only)
+ */
+router.put("/tournaments/:id", updateTournament);
+
+/**
+ * @route   DELETE /api/admin/tournaments/:id
+ * @desc    Delete tournament
+ * @access  Private (Admin only)
+ */
+router.delete("/tournaments/:id", deleteTournament);
 
 // User Management Routes
 /**

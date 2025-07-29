@@ -25,8 +25,12 @@ import FormationBuilder from "./pages/manager/FormationBuilder";
 import SuperAdminDashboard from "./pages/superadmin/Dashboard";
 import UsersManagement from "./pages/superadmin/Users";
 import ClubsManagement from "./pages/superadmin/Clubs";
-import MatchReports from "./pages/superadmin/Reports";
+import Reports from "./pages/superadmin/Reports";
+import Analytics from "./pages/superadmin/Analytics";
 import Tournaments from "./pages/superadmin/Tournaments";
+import TournamentDetail from "./pages/superadmin/TournamentDetail";
+import CreateTournament from "./pages/superadmin/CreateTournament";
+import EditTournament from "./pages/superadmin/EditTournament";
 import SystemLogs from "./pages/superadmin/Logs";
 import Notifications from "./pages/superadmin/Notifications";
 import Settings from "./pages/superadmin/Settings";
@@ -133,8 +137,21 @@ const AppContent = () => {
           <Route path="/superadmin" element={<SuperAdminDashboard />} />
           <Route path="/superadmin/users" element={<UsersManagement />} />
           <Route path="/superadmin/clubs" element={<ClubsManagement />} />
-          <Route path="/superadmin/reports" element={<MatchReports />} />
+          <Route path="/superadmin/reports" element={<Reports />} />
+          <Route path="/superadmin/analytics" element={<Analytics />} />
           <Route path="/superadmin/tournaments" element={<Tournaments />} />
+          <Route
+            path="/superadmin/tournaments/create"
+            element={<CreateTournament />}
+          />
+          <Route
+            path="/superadmin/tournaments/:id"
+            element={<TournamentDetail />}
+          />
+          <Route
+            path="/superadmin/tournaments/:id/edit"
+            element={<EditTournament />}
+          />
           <Route path="/superadmin/logs" element={<SystemLogs />} />
           <Route path="/superadmin/notifications" element={<Notifications />} />
           <Route path="/superadmin/settings" element={<Settings />} />

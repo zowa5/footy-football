@@ -461,6 +461,219 @@ class ApiClient {
       data: any;
     }>(url);
   }
+
+  async getAllMatches(params?: {
+    page?: number;
+    limit?: number;
+    matchday?: string;
+    status?: string;
+    type?: string;
+    club?: string;
+  }): Promise<{
+    success: boolean;
+    data: {
+      matches: any[];
+      matchDays: { date: string; count: number }[];
+      pagination: {
+        total: number;
+        page: number;
+        pages: number;
+        limit: number;
+      };
+      summary: {
+        totalMatches: number;
+        completedMatches: number;
+        inProgressMatches: number;
+        scheduledMatches: number;
+      };
+    };
+  }> {
+    const queryString = params
+      ? new URLSearchParams(
+          Object.entries(params).reduce((acc, [key, value]) => {
+            if (value !== undefined && value !== null && value !== "") {
+              acc[key] = value.toString();
+            }
+            return acc;
+          }, {} as Record<string, string>)
+        ).toString()
+      : "";
+
+    const url = `/admin/matches${queryString ? `?${queryString}` : ""}`;
+    return this.request<{
+      success: boolean;
+      data: {
+        matches: any[];
+        matchDays: { date: string; count: number }[];
+        pagination: {
+          total: number;
+          page: number;
+          pages: number;
+          limit: number;
+        };
+        summary: {
+          totalMatches: number;
+          completedMatches: number;
+          inProgressMatches: number;
+          scheduledMatches: number;
+        };
+      };
+    }>(url);
+  }
+
+  async getAdminTournaments(params?: {
+    page?: number;
+    limit?: number;
+    status?: string;
+    type?: string;
+  }): Promise<{
+    success: boolean;
+    data: {
+      tournaments: Tournament[];
+      pagination: {
+        total: number;
+        page: number;
+        pages: number;
+        limit: number;
+      };
+      summary: {
+        totalTournaments: number;
+        activeTournaments: number;
+        upcomingTournaments: number;
+        completedTournaments: number;
+      };
+    };
+  }> {
+    const queryString = params
+      ? new URLSearchParams(
+          Object.entries(params).reduce((acc, [key, value]) => {
+            if (value !== undefined && value !== null && value !== "") {
+              acc[key] = value.toString();
+            }
+            return acc;
+          }, {} as Record<string, string>)
+        ).toString()
+      : "";
+
+    const url = `/admin/tournaments${queryString ? `?${queryString}` : ""}`;
+    return this.request<{
+      success: boolean;
+      data: {
+        tournaments: Tournament[];
+        pagination: {
+          total: number;
+          page: number;
+          pages: number;
+          limit: number;
+        };
+        summary: {
+          totalTournaments: number;
+          activeTournaments: number;
+          upcomingTournaments: number;
+          completedTournaments: number;
+        };
+      };
+    }>(url);
+  }
+
+  async getTournament(id: string): Promise<{
+    success: boolean;
+    data: {
+      tournament: Tournament;
+    };
+  }> {
+    return this.request<{
+      success: boolean;
+      data: {
+        tournament: Tournament;
+      };
+    }>(`/admin/tournaments/${id}`);
+  }
+
+  async createTournament(tournamentData: {
+    name: string;
+    description?: string;
+    type: string;
+    maxParticipants: number;
+    entryFee?: number;
+    prizes?: Array<{ position: number; coins: number; title?: string }>;
+    schedule: {
+      registrationStart: string;
+      registrationEnd: string;
+      tournamentStart: string;
+      tournamentEnd?: string;
+    };
+    status?: string;
+  }): Promise<{
+    success: boolean;
+    data: {
+      message: string;
+      tournament: Tournament;
+    };
+  }> {
+    return this.request<{
+      success: boolean;
+      data: {
+        message: string;
+        tournament: Tournament;
+      };
+    }>("/admin/tournaments", {
+      method: "POST",
+      body: JSON.stringify(tournamentData),
+    });
+  }
+
+  async updateTournament(
+    id: string,
+    tournamentData: {
+      name?: string;
+      description?: string;
+      type?: string;
+      status?: string;
+      maxParticipants?: number;
+      entryFee?: number;
+      prizes?: Array<{ position: number; coins: number; title?: string }>;
+      schedule?: {
+        registrationStart: string;
+        registrationEnd: string;
+        tournamentStart: string;
+        tournamentEnd?: string;
+      };
+    }
+  ): Promise<{
+    success: boolean;
+    data: {
+      message: string;
+      tournament: Tournament;
+    };
+  }> {
+    return this.request<{
+      success: boolean;
+      data: {
+        message: string;
+        tournament: Tournament;
+      };
+    }>(`/admin/tournaments/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(tournamentData),
+    });
+  }
+
+  async deleteTournament(id: string): Promise<{
+    success: boolean;
+    data: {
+      message: string;
+    };
+  }> {
+    return this.request<{
+      success: boolean;
+      data: {
+        message: string;
+      };
+    }>(`/admin/tournaments/${id}`, {
+      method: "DELETE",
+    });
+  }
 }
 
 export const apiClient = new ApiClient(API_BASE_URL);

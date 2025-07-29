@@ -54,9 +54,7 @@ export default function SimpleReports() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">251</div>
-            <p className="text-xs text-muted-foreground">
-              2.8 avg per match
-            </p>
+            <p className="text-xs text-muted-foreground">2.8 avg per match</p>
           </CardContent>
         </Card>
       </div>
