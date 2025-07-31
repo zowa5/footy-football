@@ -32,7 +32,6 @@ import TournamentDetail from "./pages/superadmin/TournamentDetail";
 import CreateTournament from "./pages/superadmin/CreateTournament";
 import EditTournament from "./pages/superadmin/EditTournament";
 import SystemLogs from "./pages/superadmin/Logs";
-import Notifications from "./pages/superadmin/Notifications";
 import Settings from "./pages/superadmin/Settings";
 import NotFound from "./pages/NotFound";
 
@@ -68,6 +67,7 @@ const AppContent = () => {
     isLoading,
   });
 
+  // Show loading while checking authentication
   if (isLoading) {
     console.log("⏳ Still loading...");
     return (
@@ -77,6 +77,7 @@ const AppContent = () => {
     );
   }
 
+  // If not authenticated, show login page
   if (!isAuthenticated) {
     console.log("🚫 Not authenticated, showing AuthPage");
     return <AuthPage />;
@@ -86,9 +87,20 @@ const AppContent = () => {
   console.log("✅ Authenticated, rendering dashboard for role:", userRole);
   console.log("🔍 User object:", user);
 
-  // Add fallback if no userRole matches
+  // If authenticated but role is not valid, show loading or error
   if (!userRole || !["player", "manager", "super_admin"].includes(userRole)) {
     console.log("❌ Unknown or invalid user role:", userRole);
+
+    // If user exists but role is undefined, might be loading issue - show loading
+    if (user && !userRole) {
+      return (
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600"></div>
+        </div>
+      );
+    }
+
+    // If role is invalid, show error
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -153,7 +165,6 @@ const AppContent = () => {
             element={<EditTournament />}
           />
           <Route path="/superadmin/logs" element={<SystemLogs />} />
-          <Route path="/superadmin/notifications" element={<Notifications />} />
           <Route path="/superadmin/settings" element={<Settings />} />
           <Route path="*" element={<Navigate to="/superadmin" replace />} />
         </Route>

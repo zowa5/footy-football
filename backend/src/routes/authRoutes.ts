@@ -6,6 +6,7 @@ import {
   updateLastLogin,
 } from "../controllers/authController";
 import { authenticate } from "../middleware/auth";
+import { maintenanceCheck } from "../middleware/maintenance";
 
 const router = Router();
 

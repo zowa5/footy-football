@@ -27,32 +27,77 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   // Debug state changes
   useEffect(() => {
+    const computedIsAuthenticated = !!user && !!token;
     console.log("🔄 AuthContext state changed:", {
       user: user?.username,
       userRole: user?.role,
       token: token ? "present" : "none",
-      isAuthenticated: !!(user && token),
+      isAuthenticated: computedIsAuthenticated,
+      isLoading,
     });
-  }, [user, token]);
+  }, [user, token, isLoading]);
 
   // Check if user is already logged in on mount
   useEffect(() => {
     const checkAuth = async () => {
       const storedToken = localStorage.getItem("authToken");
+      console.log(
+        "🔍 Checking stored token:",
+        storedToken ? "present" : "none"
+      );
+
       if (storedToken) {
         try {
+          console.log("🔍 Fetching profile with stored token...");
           apiClient.setToken(storedToken);
           const profileResponse = await apiClient.getProfile();
+
           if (profileResponse.success && profileResponse.data) {
-            setUser(profileResponse.data);
-            setToken(storedToken);
+            console.log("🔍 Profile response:", profileResponse);
+            console.log("🔍 Profile data:", profileResponse.data);
+
+            // Backend returns { success: true, data: { user: {...} } }
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const userData = (profileResponse.data as any).user;
+            console.log("🔍 User data:", userData);
+
+            if (userData) {
+              console.log(
+                "✅ Auto-login successful:",
+                userData.username,
+                "Role:",
+                userData.role
+              );
+              setToken(storedToken);
+              setUser(userData);
+            } else {
+              console.log("❌ User data not found in response");
+              localStorage.removeItem("authToken");
+              apiClient.setToken(null);
+              setToken(null);
+              setUser(null);
+            }
+          } else {
+            console.log("❌ Profile fetch failed, clearing token");
+            localStorage.removeItem("authToken");
+            apiClient.setToken(null);
+            setToken(null);
+            setUser(null);
           }
         } catch (error) {
-          console.error("Auto login failed:", error);
+          console.error("❌ Auto login failed:", error);
           localStorage.removeItem("authToken");
           apiClient.setToken(null);
+          setToken(null);
+          setUser(null);
         }
+      } else {
+        console.log("🔍 No stored token found");
+        setToken(null);
+        setUser(null);
       }
+
+      console.log("✅ Auth check completed, setting isLoading to false");
       setIsLoading(false);
     };
 
@@ -94,6 +139,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  // Simple and reliable authentication check
   const isAuthenticated = !!user && !!token;
 
   const value: AuthContextType = {

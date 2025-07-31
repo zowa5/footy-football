@@ -12,6 +12,7 @@ import {
   Calendar,
 } from "lucide-react";
 import { useDashboardStats } from "@/hooks/api";
+import type { User, Match } from "@/types/api";
 
 export default function SuperAdminDashboard() {
   const { data: dashboardStats, isLoading, error } = useDashboardStats();
@@ -23,6 +24,13 @@ export default function SuperAdminDashboard() {
     error,
     dataExists: !!dashboardStats,
     usersData: dashboardStats?.data?.users,
+    tournamentsData: dashboardStats?.data?.tournaments,
+    recentActivity: dashboardStats?.data?.recentActivity,
+    systemStats: {
+      matches: dashboardStats?.data?.matches,
+      store: dashboardStats?.data?.store,
+      transactions: dashboardStats?.data?.transactions,
+    },
   });
 
   if (error) {
@@ -43,7 +51,7 @@ export default function SuperAdminDashboard() {
         <h1 className="text-3xl font-bold">Super Admin Dashboard</h1>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Users</CardTitle>
@@ -109,26 +117,6 @@ export default function SuperAdminDashboard() {
             )}
           </CardContent>
         </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">System Status</CardTitle>
-            <Server className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              <Badge
-                variant="secondary"
-                className="bg-green-100 text-green-800"
-              >
-                Healthy
-              </Badge>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              All systems operational
-            </p>
-          </CardContent>
-        </Card>
       </div>
 
       <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-7">
@@ -139,7 +127,7 @@ export default function SuperAdminDashboard() {
           <CardContent>
             {isLoading ? (
               <div className="space-y-4">
-                {[...Array(5)].map((_, i) => (
+                {[...Array(8)].map((_, i) => (
                   <div key={i} className="flex items-center gap-2">
                     <Skeleton className="h-4 w-4" />
                     <Skeleton className="h-4 flex-1" />
@@ -148,21 +136,44 @@ export default function SuperAdminDashboard() {
               </div>
             ) : (
               <div className="space-y-4">
+                {/* Recent Users */}
                 {dashboardStats?.data?.recentActivity?.users
-                  ?.slice(0, 5)
-                  .map((user, i) => (
-                    <div key={i} className="flex items-center gap-2">
-                      <Activity className="h-4 w-4 text-muted-foreground" />
+                  ?.slice(0, 3)
+                  .map((user: User, i: number) => (
+                    <div key={`user-${i}`} className="flex items-center gap-2">
+                      <Users className="h-4 w-4 text-blue-500" />
                       <span className="text-sm">
-                        New {user.role} registered: {user.username} (
-                        {user.email})
+                        New {user.role} registered:{" "}
+                        <strong>{user.username}</strong>
+                        <span className="text-muted-foreground ml-1">
+                          ({user.email})
+                        </span>
                       </span>
                     </div>
-                  )) || (
-                  <div className="text-sm text-muted-foreground">
-                    No recent activity
-                  </div>
-                )}
+                  ))}
+
+                {/* Recent Matches */}
+                {dashboardStats?.data?.recentActivity?.matches
+                  ?.slice(0, 3)
+                  .map((match: Match, i: number) => (
+                    <div key={`match-${i}`} className="flex items-center gap-2">
+                      <Activity className="h-4 w-4 text-green-500" />
+                      <span className="text-sm">
+                        Match created: ID <strong>{match._id}</strong>
+                        <span className="text-muted-foreground ml-1">
+                          ({match.status})
+                        </span>
+                      </span>
+                    </div>
+                  ))}
+
+                {/* Show message if no activity */}
+                {!dashboardStats?.data?.recentActivity?.users?.length &&
+                  !dashboardStats?.data?.recentActivity?.matches?.length && (
+                    <div className="text-sm text-muted-foreground">
+                      No recent activity
+                    </div>
+                  )}
               </div>
             )}
           </CardContent>
@@ -175,7 +186,7 @@ export default function SuperAdminDashboard() {
           <CardContent>
             {isLoading ? (
               <div className="space-y-4">
-                {[...Array(4)].map((_, i) => (
+                {[...Array(6)].map((_, i) => (
                   <div key={i} className="flex items-center gap-2">
                     <Skeleton className="h-4 w-4" />
                     <Skeleton className="h-4 flex-1" />
@@ -183,31 +194,61 @@ export default function SuperAdminDashboard() {
                 ))}
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-3">
                 <div className="flex items-center gap-2">
                   <Calendar className="h-4 w-4 text-muted-foreground" />
                   <span className="text-sm">
-                    Total Matches: {dashboardStats?.data?.matches?.total || 0}
+                    Total Matches:{" "}
+                    <strong>
+                      {dashboardStats?.data?.matches?.total?.toLocaleString() ||
+                        0}
+                    </strong>
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Activity className="h-4 w-4 text-muted-foreground" />
+                  <Activity className="h-4 w-4 text-green-500" />
                   <span className="text-sm">
-                    Active Matches: {dashboardStats?.data?.matches?.active || 0}
+                    Active Matches:{" "}
+                    <strong>
+                      {dashboardStats?.data?.matches?.active || 0}
+                    </strong>
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Shield className="h-4 w-4 text-muted-foreground" />
+                  <Shield className="h-4 w-4 text-blue-500" />
                   <span className="text-sm">
-                    Store Items: {dashboardStats?.data?.store?.items || 0}
+                    Completed Matches:{" "}
+                    <strong>
+                      {dashboardStats?.data?.matches?.completed || 0}
+                    </strong>
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Globe className="h-4 w-4 text-muted-foreground" />
+                  <Globe className="h-4 w-4 text-purple-500" />
                   <span className="text-sm">
-                    Total Revenue: $
-                    {dashboardStats?.data?.transactions?.revenue?.toLocaleString() ||
-                      0}
+                    Store Items:{" "}
+                    <strong>{dashboardStats?.data?.store?.items || 0}</strong>
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Users className="h-4 w-4 text-orange-500" />
+                  <span className="text-sm">
+                    Total Purchases:{" "}
+                    <strong>
+                      {dashboardStats?.data?.store?.purchases?.toLocaleString() ||
+                        0}
+                    </strong>
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Server className="h-4 w-4 text-emerald-500" />
+                  <span className="text-sm">
+                    Revenue:{" "}
+                    <strong>
+                      $
+                      {dashboardStats?.data?.transactions?.revenue?.toLocaleString() ||
+                        0}
+                    </strong>
                   </span>
                 </div>
               </div>

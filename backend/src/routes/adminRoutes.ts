@@ -22,6 +22,8 @@ import {
   updateTournament,
   deleteTournament,
   getTournamentById,
+  getSettings,
+  updateSettings,
 } from "../controllers/adminController";
 import { authenticate } from "../middleware/auth";
 
@@ -188,5 +190,19 @@ router.put("/store-items/:id", updateStoreItem);
  * @access  Private (Admin only)
  */
 router.delete("/store-items/:id", deleteStoreItem);
+
+/**
+ * @route   GET /api/admin/settings
+ * @desc    Get system settings
+ * @access  Private (Super Admin only)
+ */
+router.get("/settings", getSettings);
+
+/**
+ * @route   PUT /api/admin/settings
+ * @desc    Update system settings
+ * @access  Private (Super Admin only)
+ */
+router.put("/settings", updateSettings);
 
 export default router;

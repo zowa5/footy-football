@@ -239,6 +239,7 @@ export interface RegisterData {
   email: string;
   password: string;
   role: "player" | "manager";
+  position?: string; // Optional for players only
 }
 
 export interface DashboardData {
@@ -257,12 +258,33 @@ export interface LeaderboardEntry {
 
 export interface SystemLog {
   _id: string;
-  action: string;
+  level: "info" | "warning" | "error" | "critical";
+  category:
+    | "auth"
+    | "user_management"
+    | "tournament"
+    | "match"
+    | "store"
+    | "system"
+    | "security";
+  message: string;
+  details?: string;
   userId?: string;
-  details: Record<string, unknown>;
-  timestamp: string;
+  adminId?: string;
+  metadata?: {
+    ip?: string;
+    userAgent?: string;
+    endpoint?: string;
+    method?: string;
+    statusCode?: number;
+    responseTime?: number;
+    [key: string]: string | number | boolean | undefined;
+  };
+  createdAt: string;
+  // Legacy fields for backward compatibility
+  action?: string;
+  timestamp?: string;
   ipAddress?: string;
-  userAgent?: string;
 }
 
 export interface DashboardStats {

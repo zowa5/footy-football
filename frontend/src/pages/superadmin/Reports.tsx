@@ -4,7 +4,7 @@ import MatchReports from "./MatchReports";
 
 export default function SimpleReports() {
   return (
-    <div className="space-y-6">
+    <div className="p-6 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -54,9 +54,7 @@ export default function SimpleReports() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">251</div>
-            <p className="text-xs text-muted-foreground">
-              2.8 avg per match
-            </p>
+            <p className="text-xs text-muted-foreground">2.8 avg per match</p>
           </CardContent>
         </Card>
       </div>

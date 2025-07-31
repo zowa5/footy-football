@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { User, IPlayer, IManager } from "../models/User";
+import { Settings } from "../models/Settings";
 import { generateToken } from "../utils/jwt";
 import { asyncHandler, createError } from "../middleware/errorHandler";
 import { UserRole, PlayerPosition } from "../types/common";
@@ -114,6 +115,15 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
 
   if (!user.isActive) {
     throw createError("Account is deactivated", 401);
+  }
+
+  // Check maintenance mode (only allow super_admin during maintenance)
+  const settings = await Settings.findOne();
+  if (settings?.maintenanceMode && user.role !== "super_admin") {
+    throw createError(
+      "System is currently under maintenance. Please try again later.",
+      503
+    );
   }
 
   // Check password

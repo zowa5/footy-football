@@ -452,10 +452,14 @@ export const useAnalytics = () => {
   });
 };
 
-export const useSystemLogs = () => {
+export const useSystemLogs = (params?: {
+  action?: string;
+  page?: number;
+  limit?: number;
+}) => {
   return useQuery({
-    queryKey: queryKeys.systemLogs,
-    queryFn: () => apiClient.getSystemLogs(),
+    queryKey: [...queryKeys.systemLogs, params],
+    queryFn: () => apiClient.getSystemLogs(params),
     enabled: !!localStorage.getItem("authToken"),
   });
 };

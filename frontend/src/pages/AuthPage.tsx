@@ -4,11 +4,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useAuth } from "@/hooks/useAuth";
 import { useLogin, useRegister } from "@/hooks/api";
+import type { RegisterData } from "@/types/api";
 import stadiumHero from "@/assets/stadium-hero.jpg";
 
 export default function AuthPage() {
@@ -16,9 +18,8 @@ export default function AuthPage() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [username, setUsername] = useState("");
-  const [role, setRole] = useState<"player" | "manager" | "superadmin">(
-    "player"
-  );
+  const [role, setRole] = useState<"player" | "manager">("player");
+  const [position, setPosition] = useState("");
   const [error, setError] = useState("");
 
   const { login: authLogin, isAuthenticated, user, isLoading } = useAuth();
@@ -76,8 +77,8 @@ export default function AuthPage() {
       console.log("✅ Login successful:", result);
       console.log("🔍 Result structure:", JSON.stringify(result, null, 2));
 
-      // Access user and token from result.data based on API response structure
-      const { user, token } = result.data || result;
+      // Access user and token from result.data
+      const { user, token } = result.data;
       console.log("🔍 Extracted user and token:", { user, token });
       console.log("🔍 User role:", user?.role);
 
@@ -105,22 +106,33 @@ export default function AuthPage() {
     }
 
     try {
-      const result = await registerMutation.mutateAsync({
+      const registerData: RegisterData = {
         username,
         email,
         password,
-        role,
-      });
+        role: role as "player" | "manager",
+      };
 
-      // Access user and token from result.data based on API response structure
-      const { user, token } = result.data || result;
+      // Add position for players
+      if (role === "player") {
+        if (!position) {
+          setError("Please select a player position");
+          return;
+        }
+        registerData.position = position;
+      }
+
+      const result = await registerMutation.mutateAsync(registerData);
+
+      // Access user and token from result.data
+      const { user, token } = result.data;
       authLogin(user, token);
     } catch (error: unknown) {
       setError(error instanceof Error ? error.message : "Registration failed");
     }
   };
 
-  const handleDemoLogin = (demoRole: "player" | "manager" | "superadmin") => {
+  const handleDemoLogin = (demoRole: "player" | "manager") => {
     // Pre-fill with demo credentials based on role
     if (demoRole === "player") {
       setEmail("alexander_anderson_0_0@arsenalfc.com");
@@ -128,9 +140,6 @@ export default function AuthPage() {
     } else if (demoRole === "manager") {
       setEmail("manager1@arsenalfc.com");
       setPassword("password123");
-    } else if (demoRole === "superadmin") {
-      setEmail("admin@footyclub.com");
-      setPassword("admin123");
     }
 
     // Automatically trigger login
@@ -270,7 +279,7 @@ export default function AuthPage() {
                     <RadioGroup
                       value={role}
                       onValueChange={(value) =>
-                        setRole(value as "player" | "manager" | "superadmin")
+                        setRole(value as "player" | "manager")
                       }
                       className="grid grid-cols-1 gap-3"
                     >
@@ -315,32 +324,35 @@ export default function AuthPage() {
                           </Label>
                         </div>
                       </div>
-
-                      <div className="flex items-center space-x-3 p-3 rounded-lg border border-border hover:bg-secondary/50 transition-colors">
-                        <RadioGroupItem value="superadmin" id="superadmin" />
-                        <div className="flex-1">
-                          <Label
-                            htmlFor="superadmin"
-                            className="cursor-pointer"
-                          >
-                            <div className="flex items-center justify-between">
-                              <span className="font-medium">Super Admin</span>
-                              <Badge
-                                variant="outline"
-                                className="text-destructive border-destructive/50"
-                              >
-                                System Admin
-                              </Badge>
-                            </div>
-                            <p className="text-sm text-muted-foreground mt-1">
-                              Manage the entire system, users, clubs, and game
-                              settings
-                            </p>
-                          </Label>
-                        </div>
-                      </div>
                     </RadioGroup>
                   </div>
+
+                  {/* Player Position Selection (only show for players) */}
+                  {role === "player" && (
+                    <div className="space-y-2">
+                      <Label htmlFor="position">Player Position</Label>
+                      <Select value={position} onValueChange={setPosition}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select your preferred position" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="GK">Goalkeeper (GK)</SelectItem>
+                          <SelectItem value="CB">Centre Back (CB)</SelectItem>
+                          <SelectItem value="LB">Left Back (LB)</SelectItem>
+                          <SelectItem value="RB">Right Back (RB)</SelectItem>
+                          <SelectItem value="CDM">Central Defensive Midfielder (CDM)</SelectItem>
+                          <SelectItem value="CM">Central Midfielder (CM)</SelectItem>
+                          <SelectItem value="CAM">Central Attacking Midfielder (CAM)</SelectItem>
+                          <SelectItem value="LM">Left Midfielder (LM)</SelectItem>
+                          <SelectItem value="RM">Right Midfielder (RM)</SelectItem>
+                          <SelectItem value="LW">Left Winger (LW)</SelectItem>
+                          <SelectItem value="RW">Right Winger (RW)</SelectItem>
+                          <SelectItem value="CF">Centre Forward (CF)</SelectItem>
+                          <SelectItem value="ST">Striker (ST)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
 
                   <Button
                     type="submit"
@@ -373,13 +385,6 @@ export default function AuthPage() {
               onClick={() => handleDemoLogin("manager")}
             >
               ⚔️ Quick Demo Login (Manager Mode)
-            </Button>
-            <Button
-              variant="outline"
-              className="border-destructive/50 hover:bg-destructive/10"
-              onClick={() => handleDemoLogin("superadmin")}
-            >
-              🛡️ Quick Demo Login (Super Admin Mode)
             </Button>
           </div>
         </div>

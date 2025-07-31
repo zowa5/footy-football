@@ -10,6 +10,7 @@ import { Match } from "../models/Match";
 import { Tournament } from "../models/Tournament";
 import { SystemLog, LogLevel, LogCategory } from "../models/SystemLog";
 import { StoreItem } from "../models/StoreItem";
+import { Settings } from "../models/Settings";
 import { AuthenticatedRequest } from "../middleware/auth";
 
 /**
@@ -47,7 +48,16 @@ export const getDashboardStats = async (
     // Get tournament statistics
     const totalTournaments = await Tournament.countDocuments();
     const activeTournaments = await Tournament.countDocuments({
-      status: "active",
+      status: {
+        $in: ["registration_open", "registration_closed", "in_progress"],
+      },
+    });
+
+    // Debug logging for tournaments
+    console.log("🏆 Tournament Debug:", {
+      totalTournaments,
+      activeTournaments,
+      allTournaments: await Tournament.find({}, "name status").lean(),
     });
 
     // Get transaction statistics
@@ -409,26 +419,40 @@ export const getSystemLogs = async (
 
     const query: any = {};
     if (action) {
-      query.action = action;
+      query.category = action; // SystemLog uses 'category' field, not 'action'
     }
+
+    console.log("🔍 SystemLogs query:", query);
+    console.log("🔍 Pagination:", {
+      page,
+      limit,
+      skip: (Number(page) - 1) * Number(limit),
+    });
 
     const skip = (Number(page) - 1) * Number(limit);
 
     const logs = await SystemLog.find(query)
-      .populate("admin", "username email")
+      .populate("adminId", "username email")
+      .populate("userId", "username email")
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(Number(limit));
 
     const total = await SystemLog.countDocuments(query);
 
+    console.log("🔍 Found logs:", logs.length);
+    console.log("🔍 Total count:", total);
+
     res.json({
-      logs,
-      pagination: {
-        total,
-        page: Number(page),
-        pages: Math.ceil(total / Number(limit)),
-        limit: Number(limit),
+      success: true,
+      data: {
+        logs,
+        pagination: {
+          total,
+          page: Number(page),
+          pages: Math.ceil(total / Number(limit)),
+          limit: Number(limit),
+        },
       },
     });
   } catch (error: any) {
@@ -1646,7 +1670,7 @@ export const createTournament = async (
     // Log the action
     const systemLog = new SystemLog({
       level: LogLevel.INFO,
-      category: LogCategory.ADMIN_ACTION,
+      category: LogCategory.TOURNAMENT,
       message: `Tournament created: ${tournament.name}`,
       details: `Type: ${tournament.type}, Max participants: ${tournament.maxParticipants}`,
       adminId: req.user.id,
@@ -1758,7 +1782,7 @@ export const updateTournament = async (
     // Log the action
     const systemLog = new SystemLog({
       level: LogLevel.INFO,
-      category: LogCategory.ADMIN_ACTION,
+      category: LogCategory.TOURNAMENT,
       message: `Tournament updated: ${updatedTournament!.name}`,
       details: `Updated fields: ${Object.keys(updates).join(", ")}`,
       adminId: req.user.id,
@@ -1832,7 +1856,7 @@ export const deleteTournament = async (
     // Log the action
     const systemLog = new SystemLog({
       level: LogLevel.INFO,
-      category: LogCategory.ADMIN_ACTION,
+      category: LogCategory.TOURNAMENT,
       message: `Tournament deleted: ${tournament.name}`,
       details: `Type: ${tournament.type}, Status: ${tournament.status}`,
       adminId: req.user.id,
@@ -1923,6 +1947,141 @@ export const getTournamentById = async (
     });
   } catch (error: any) {
     console.error("Get tournament by ID error:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+/**
+ * @desc    Get system settings
+ * @route   GET /api/admin/settings
+ * @access  Private (Super Admin only)
+ */
+export const getSettings = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    if (req.user?.role !== "super_admin") {
+      return res
+        .status(403)
+        .json({ message: "Access denied. Super Admin role required." });
+    }
+
+    let settings = await Settings.findOne();
+
+    // If no settings exist, create default settings
+    if (!settings) {
+      settings = await Settings.create({
+        siteName: "PES Manager",
+        timezone: "UTC+7",
+        maintenanceMode: false,
+      });
+    }
+
+    res.json({
+      success: true,
+      data: settings,
+    });
+  } catch (error: any) {
+    console.error("Get settings error:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+/**
+ * @desc    Update system settings
+ * @route   PUT /api/admin/settings
+ * @access  Private (Super Admin only)
+ */
+export const updateSettings = async (
+  req: AuthenticatedRequest,
+  res: Response
+) => {
+  try {
+    if (req.user?.role !== "super_admin") {
+      return res
+        .status(403)
+        .json({ message: "Access denied. Super Admin role required." });
+    }
+
+    const { siteName, timezone, maintenanceMode } = req.body;
+
+    // Validate timezone
+    const validTimezones = [
+      "UTC-12",
+      "UTC-11",
+      "UTC-10",
+      "UTC-9",
+      "UTC-8",
+      "UTC-7",
+      "UTC-6",
+      "UTC-5",
+      "UTC-4",
+      "UTC-3",
+      "UTC-2",
+      "UTC-1",
+      "UTC+0",
+      "UTC+1",
+      "UTC+2",
+      "UTC+3",
+      "UTC+4",
+      "UTC+5",
+      "UTC+6",
+      "UTC+7",
+      "UTC+8",
+      "UTC+9",
+      "UTC+10",
+      "UTC+11",
+      "UTC+12",
+    ];
+
+    if (timezone && !validTimezones.includes(timezone)) {
+      return res.status(400).json({ message: "Invalid timezone" });
+    }
+
+    let settings = await Settings.findOne();
+
+    if (!settings) {
+      // Create new settings
+      settings = await Settings.create({
+        siteName: siteName || "PES Manager",
+        timezone: timezone || "UTC+7",
+        maintenanceMode: maintenanceMode || false,
+      });
+    } else {
+      // Update existing settings
+      if (siteName !== undefined) settings.siteName = siteName;
+      if (timezone !== undefined) settings.timezone = timezone;
+      if (maintenanceMode !== undefined)
+        settings.maintenanceMode = maintenanceMode;
+
+      await settings.save();
+    }
+
+    // Log the settings change
+    const systemLog = new SystemLog({
+      level: LogLevel.INFO,
+      category: LogCategory.SYSTEM,
+      message: `System settings updated by super admin`,
+      details: `Settings changed: ${JSON.stringify({
+        siteName,
+        timezone,
+        maintenanceMode,
+      })}`,
+      adminId: req.user.id,
+      metadata: {
+        ip: req.ip,
+        userAgent: req.headers["user-agent"],
+        endpoint: req.originalUrl,
+        method: req.method,
+      },
+    });
+    await systemLog.save();
+
+    res.json({
+      success: true,
+      data: settings,
+      message: "Settings updated successfully",
+    });
+  } catch (error: any) {
+    console.error("Update settings error:", error);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };

@@ -10,7 +10,6 @@ import {
   Shield,
   FileText,
   Globe,
-  Bell,
   LogOut,
   TrendingUp,
 } from "lucide-react";
@@ -25,7 +24,6 @@ const superAdminNavItems = [
   { title: "Analytics", url: "/superadmin/analytics", icon: TrendingUp },
   { title: "Tournaments", url: "/superadmin/tournaments", icon: Globe },
   { title: "System Logs", url: "/superadmin/logs", icon: Database },
-  { title: "Notifications", url: "/superadmin/notifications", icon: Bell },
   { title: "Settings", url: "/superadmin/settings", icon: Settings },
 ];
 

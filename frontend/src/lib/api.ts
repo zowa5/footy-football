@@ -426,8 +426,29 @@ class ApiClient {
     });
   }
 
-  async getSystemLogs(): Promise<ApiResponse<SystemLog[]>> {
-    return this.request<ApiResponse<SystemLog[]>>("/admin/logs");
+  async getSystemLogs(params?: {
+    action?: string;
+    page?: number;
+    limit?: number;
+  }): Promise<
+    ApiResponse<{
+      logs: SystemLog[];
+      pagination: {
+        total: number;
+        page: number;
+        pages: number;
+      };
+    }>
+  > {
+    const queryParams = new URLSearchParams();
+    if (params?.action) queryParams.append("action", params.action);
+    if (params?.page) queryParams.append("page", params.page.toString());
+    if (params?.limit) queryParams.append("limit", params.limit.toString());
+
+    const url = `/admin/logs${
+      queryParams.toString() ? `?${queryParams.toString()}` : ""
+    }`;
+    return this.request(url);
   }
 
   async getAnalytics(): Promise<ApiResponse<Analytics>> {
