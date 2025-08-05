@@ -1,5 +1,6 @@
 import { Router } from "express";
 import {
+  getPlayerDashboard,
   getPlayerStats,
   updatePlayerStats,
   getPlayerLeaderboard,
@@ -12,6 +13,18 @@ import { authenticate, authorize } from "../middleware/auth";
 import { UserRole } from "../types/common";
 
 const router = Router();
+
+/**
+ * @route   GET /api/player/dashboard
+ * @desc    Get player dashboard data
+ * @access  Private - Player only
+ */
+router.get(
+  "/dashboard",
+  authenticate,
+  authorize(UserRole.PLAYER),
+  getPlayerDashboard
+);
 
 /**
  * @route   GET /api/players/stats

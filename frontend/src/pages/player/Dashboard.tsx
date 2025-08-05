@@ -5,6 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { usePlayerDashboard } from "../../hooks/usePlayerDashboard";
 import {
   User,
   Target,
@@ -20,72 +23,115 @@ import {
   Settings,
 } from "lucide-react";
 
-// Mock data - would come from backend
-const mockPlayerData = {
-  name: "Alex Rodriguez",
-  position: "Central Midfielder",
-  overall: 78,
-  energy: 85,
-  maxEnergy: 100,
-  club: "FC Thunderbolts",
-  stats: {
-    goals: 12,
-    assists: 18,
-    matches: 24,
-    rating: 7.8,
-  },
-  nextMatch: {
-    opponent: "Lightning United",
-    date: "2024-01-25",
-    time: "19:00",
-  },
-  recentForm: ["W", "W", "D", "W", "L"],
-};
-
-const playerAttributes = [
-  // Offensive Attributes
-  { name: "Offensive Awareness", value: 82, max: 99, category: "offensive" },
-  { name: "Ball Control", value: 78, max: 99, category: "offensive" },
-  { name: "Dribbling", value: 75, max: 99, category: "offensive" },
-  { name: "Tight Possession", value: 73, max: 99, category: "offensive" },
-  { name: "Low Pass", value: 85, max: 99, category: "offensive" },
-  { name: "Lofted Pass", value: 80, max: 99, category: "offensive" },
-  { name: "Finishing", value: 70, max: 99, category: "offensive" },
-  { name: "Heading", value: 68, max: 99, category: "offensive" },
-  { name: "Place Kicking", value: 65, max: 99, category: "offensive" },
-  { name: "Curl", value: 72, max: 99, category: "offensive" },
-
-  // Physical Attributes
-  { name: "Speed", value: 77, max: 99, category: "physical" },
-  { name: "Acceleration", value: 79, max: 99, category: "physical" },
-  { name: "Kicking Power", value: 74, max: 99, category: "physical" },
-  { name: "Jump", value: 71, max: 99, category: "physical" },
-  { name: "Physical Contact", value: 76, max: 99, category: "physical" },
-  { name: "Balance", value: 81, max: 99, category: "physical" },
-  { name: "Stamina", value: 83, max: 99, category: "physical" },
-
-  // Defensive Attributes
-  { name: "Defensive Awareness", value: 69, max: 99, category: "defensive" },
-  { name: "Ball Winning", value: 72, max: 99, category: "defensive" },
-  { name: "Aggression", value: 67, max: 99, category: "defensive" },
-
-  // Goalkeeper Attributes
-  { name: "GK Awareness", value: 25, max: 99, category: "goalkeeper" },
-  { name: "GK Catching", value: 25, max: 99, category: "goalkeeper" },
-  { name: "GK Clearing", value: 25, max: 99, category: "goalkeeper" },
-  { name: "GK Reflexes", value: 25, max: 99, category: "goalkeeper" },
-  { name: "GK Reach", value: 25, max: 99, category: "goalkeeper" },
-
-  // Special Attributes
-  { name: "Weak Foot Usage", value: 2, max: 4, category: "special" },
-  { name: "Weak Foot Accuracy", value: 2, max: 4, category: "special" },
-  { name: "Form", value: 6, max: 8, category: "special" },
-  { name: "Injury Resistance", value: 2, max: 3, category: "special" },
-];
-
 export default function PlayerDashboard() {
-  const [player] = useState(mockPlayerData);
+  const { data: dashboardData, isLoading, error } = usePlayerDashboard();
   const [selectedAttributeTab, setSelectedAttributeTab] = useState("offensive");
+
+  // Debug logging
+  console.log("🔍 Player Dashboard Data:", {
+    dashboardData,
+    isLoading,
+    error,
+    user: dashboardData?.user,
+    playerInfo: dashboardData?.user?.playerInfo,
+  });
+
+  if (error) {
+    return (
+      <div className="p-6">
+        <Alert variant="destructive">
+          <AlertDescription>
+            Failed to load dashboard data: {error.message}
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div className="p-6 space-y-6">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {[...Array(4)].map((_, i) => (
+            <Card key={i}>
+              <CardHeader>
+                <Skeleton className="h-4 w-20" />
+              </CardHeader>
+              <CardContent>
+                <Skeleton className="h-8 w-16" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  const player = dashboardData?.user;
+  const playerInfo = player?.playerInfo;
+  const recentMatches = dashboardData?.recentMatches || [];
+  const upcomingMatches = dashboardData?.upcomingMatches || [];
+
+  // Get next upcoming match
+  const nextMatch = upcomingMatches[0];
+
+  // Convert recent matches to form (W/L/D)
+  const recentForm = recentMatches.slice(0, 5).map((match) => {
+    if (match.status !== "completed") return "U"; // Upcoming
+    // Simple form calculation - would need more logic for actual team matching
+    const homeScore = match.homeScore || 0;
+    const awayScore = match.awayScore || 0;
+
+    if (homeScore === awayScore) return "D";
+    return homeScore > awayScore ? "W" : "L";
+  });
+
+  // Helper function to extract team name
+  const getTeamName = (
+    team: { userId?: { username: string } } | string
+  ): string => {
+    if (typeof team === "string") return team;
+    return team?.userId?.username || "Unknown Team";
+  }; // Convert player skills to attributes format for display
+  const playerAttributes = [
+    // Basic PES-like skills from our model
+    {
+      name: "Pace",
+      value: playerInfo?.pace || 50,
+      max: 99,
+      category: "physical",
+    },
+    {
+      name: "Shooting",
+      value: playerInfo?.shooting || 50,
+      max: 99,
+      category: "offensive",
+    },
+    {
+      name: "Passing",
+      value: playerInfo?.passing || 50,
+      max: 99,
+      category: "offensive",
+    },
+    {
+      name: "Dribbling",
+      value: playerInfo?.dribbling || 50,
+      max: 99,
+      category: "offensive",
+    },
+    {
+      name: "Defending",
+      value: playerInfo?.defending || 50,
+      max: 99,
+      category: "defensive",
+    },
+    {
+      name: "Physical",
+      value: playerInfo?.physical || 50,
+      max: 99,
+      category: "physical",
+    },
+  ];
 
   const getFormColor = (result: string) => {
     switch (result) {
@@ -130,13 +176,26 @@ export default function PlayerDashboard() {
             <h1 className="text-3xl font-bold font-football">
               Player Dashboard
             </h1>
-            <p className="text-muted-foreground">Welcome back, {player.name}</p>
+            <p className="text-muted-foreground">
+              Welcome back,{" "}
+              {player?.firstName && player?.lastName
+                ? `${player.firstName} ${player.lastName}`
+                : player?.firstName || "Player"}
+            </p>
           </div>
           <div className="flex items-center gap-3">
             <Badge variant="outline" className="text-primary border-primary/50">
-              {player.position}
+              {playerInfo?.position || "No Position"}
             </Badge>
-            <Badge variant="secondary">Overall: {player.overall}</Badge>
+            <Badge variant="secondary">Level: {player?.level || 1}</Badge>
+            {player?.club && (
+              <Badge
+                variant="secondary"
+                className="bg-accent text-accent-foreground"
+              >
+                {player.club}
+              </Badge>
+            )}
           </div>
         </div>
 
@@ -144,27 +203,27 @@ export default function PlayerDashboard() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <Card className="stat-card">
             <CardContent className="p-4">
-              <EnergyBar current={player.energy} max={player.maxEnergy} />
+              <EnergyBar current={80} max={100} />
             </CardContent>
           </Card>
 
           <StatCard
             title="Goals"
-            value={player.stats.goals}
+            value={player?.stats?.goals || 0}
             icon={<Target className="h-4 w-4 text-primary" />}
             trend="up"
           />
 
           <StatCard
             title="Assists"
-            value={player.stats.assists}
+            value={player?.stats?.assists || 0}
             icon={<Zap className="h-4 w-4 text-accent" />}
             trend="up"
           />
 
           <StatCard
-            title="Match Rating"
-            value={player.stats.rating}
+            title="Matches Played"
+            value={player?.stats?.matches || 0}
             icon={<Star className="h-4 w-4 text-yellow-500" />}
             trend="neutral"
           />
@@ -289,7 +348,9 @@ export default function PlayerDashboard() {
               <CardContent className="space-y-3">
                 <div>
                   <p className="text-sm text-muted-foreground">Current Club</p>
-                  <p className="font-semibold text-primary">{player.club}</p>
+                  <p className="font-semibold text-primary">
+                    {player?.club || "No club assigned"}
+                  </p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">
@@ -302,7 +363,7 @@ export default function PlayerDashboard() {
                     Recent Form
                   </p>
                   <div className="flex gap-1 flex-wrap">
-                    {player.recentForm.map((result, index) => (
+                    {recentForm.map((result, index) => (
                       <Badge
                         key={index}
                         className={`${getFormColor(
@@ -327,27 +388,42 @@ export default function PlayerDashboard() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <div>
-                  <p className="text-sm text-muted-foreground">Opponent</p>
-                  <p className="font-semibold">{player.nextMatch.opponent}</p>
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <p className="text-xs text-muted-foreground">Date</p>
-                    <p className="text-sm font-medium">
-                      {player.nextMatch.date}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">Time</p>
-                    <p className="text-sm font-medium">
-                      {player.nextMatch.time}
-                    </p>
-                  </div>
-                </div>
-                <Button className="w-full football-button text-sm px-2 py-2 h-auto">
-                  <span className="truncate">View Match Details</span>
-                </Button>
+                {nextMatch ? (
+                  <>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Opponent</p>
+                      <p className="font-semibold">
+                        {getTeamName(nextMatch.homeTeam) === player?.club
+                          ? getTeamName(nextMatch.awayTeam)
+                          : getTeamName(nextMatch.homeTeam)}
+                      </p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <p className="text-xs text-muted-foreground">Date</p>
+                        <p className="text-sm font-medium">
+                          {new Date(
+                            nextMatch.scheduledDate
+                          ).toLocaleDateString()}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Time</p>
+                        <p className="text-sm font-medium">
+                          {new Date(nextMatch.scheduledDate).toLocaleTimeString(
+                            [],
+                            { hour: "2-digit", minute: "2-digit" }
+                          )}
+                        </p>
+                      </div>
+                    </div>
+                    <Button className="w-full football-button text-sm px-2 py-2 h-auto">
+                      <span className="truncate">View Match Details</span>
+                    </Button>
+                  </>
+                ) : (
+                  <p className="text-muted-foreground">No upcoming matches</p>
+                )}
               </CardContent>
             </Card>
           </div>

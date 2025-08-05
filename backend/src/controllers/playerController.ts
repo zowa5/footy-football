@@ -1,9 +1,50 @@
 import { Request, Response } from "express";
 import { User } from "../models/User";
+import { Match } from "../models/Match";
 import { Transaction, TransactionType } from "../models/Transaction";
 import { asyncHandler, createError } from "../middleware/errorHandler";
 import { AuthenticatedRequest } from "../middleware/auth";
 import { UserRole } from "../types/common";
+
+export const getPlayerDashboard = asyncHandler(
+  async (req: AuthenticatedRequest, res: Response) => {
+    const userId = req.user!.id;
+
+    const user = await User.findById(userId);
+    if (!user || user.role !== UserRole.PLAYER) {
+      throw createError("Player not found", 404);
+    }
+
+    // Get recent matches for the player
+    const recentMatches = await Match.find({
+      $or: [{ "homeTeam.userId": userId }, { "awayTeam.userId": userId }],
+    })
+      .sort({ createdAt: -1 })
+      .limit(5)
+      .populate("homeTeam.userId", "username")
+      .populate("awayTeam.userId", "username");
+
+    // Get upcoming matches
+    const upcomingMatches = await Match.find({
+      $or: [{ "homeTeam.userId": userId }, { "awayTeam.userId": userId }],
+      status: { $in: ["scheduled", "in_progress"] },
+    })
+      .sort({ scheduledDate: 1 })
+      .limit(3)
+      .populate("homeTeam.userId", "username")
+      .populate("awayTeam.userId", "username");
+
+    res.json({
+      success: true,
+      data: {
+        user,
+        recentMatches,
+        upcomingMatches,
+        stats: user.stats,
+      },
+    });
+  }
+);
 
 export const getPlayerStats = asyncHandler(
   async (req: AuthenticatedRequest, res: Response) => {

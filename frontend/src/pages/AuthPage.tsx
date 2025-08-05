@@ -4,7 +4,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -20,6 +26,7 @@ export default function AuthPage() {
   const [username, setUsername] = useState("");
   const [role, setRole] = useState<"player" | "manager">("player");
   const [position, setPosition] = useState("");
+  const [clubName, setClubName] = useState("");
   const [error, setError] = useState("");
 
   const { login: authLogin, isAuthenticated, user, isLoading } = useAuth();
@@ -120,6 +127,15 @@ export default function AuthPage() {
           return;
         }
         registerData.position = position;
+      }
+
+      // Add club name for managers
+      if (role === "manager") {
+        if (!clubName || clubName.trim().length < 3) {
+          setError("Please enter a club name (at least 3 characters)");
+          return;
+        }
+        registerData.clubName = clubName.trim();
       }
 
       const result = await registerMutation.mutateAsync(registerData);
@@ -340,17 +356,48 @@ export default function AuthPage() {
                           <SelectItem value="CB">Centre Back (CB)</SelectItem>
                           <SelectItem value="LB">Left Back (LB)</SelectItem>
                           <SelectItem value="RB">Right Back (RB)</SelectItem>
-                          <SelectItem value="CDM">Central Defensive Midfielder (CDM)</SelectItem>
-                          <SelectItem value="CM">Central Midfielder (CM)</SelectItem>
-                          <SelectItem value="CAM">Central Attacking Midfielder (CAM)</SelectItem>
-                          <SelectItem value="LM">Left Midfielder (LM)</SelectItem>
-                          <SelectItem value="RM">Right Midfielder (RM)</SelectItem>
+                          <SelectItem value="CDM">
+                            Central Defensive Midfielder (CDM)
+                          </SelectItem>
+                          <SelectItem value="CM">
+                            Central Midfielder (CM)
+                          </SelectItem>
+                          <SelectItem value="CAM">
+                            Central Attacking Midfielder (CAM)
+                          </SelectItem>
+                          <SelectItem value="LM">
+                            Left Midfielder (LM)
+                          </SelectItem>
+                          <SelectItem value="RM">
+                            Right Midfielder (RM)
+                          </SelectItem>
                           <SelectItem value="LW">Left Winger (LW)</SelectItem>
                           <SelectItem value="RW">Right Winger (RW)</SelectItem>
-                          <SelectItem value="CF">Centre Forward (CF)</SelectItem>
+                          <SelectItem value="CF">
+                            Centre Forward (CF)
+                          </SelectItem>
                           <SelectItem value="ST">Striker (ST)</SelectItem>
                         </SelectContent>
                       </Select>
+                    </div>
+                  )}
+
+                  {/* Club Name Selection (only show for managers) */}
+                  {role === "manager" && (
+                    <div className="space-y-2">
+                      <Label htmlFor="clubName">Club Name</Label>
+                      <Input
+                        id="clubName"
+                        value={clubName}
+                        onChange={(e) => setClubName(e.target.value)}
+                        placeholder="Enter your club name"
+                        className="bg-secondary/50 border-border"
+                        required
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Choose a unique name for your football club (minimum 3
+                        characters)
+                      </p>
                     </div>
                   )}
 

@@ -38,9 +38,16 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
       throw createError("Valid player position is required", 400);
     }
 
-    userData.playerData = {
+    userData.playerInfo = {
+      firstName: "Player", // Default value, can be updated later
+      lastName: "User", // Default value, can be updated later
       position,
-      stats: {
+      age: 18, // Default age
+      height: 175, // Default height in cm
+      weight: 70, // Default weight in kg
+      nationality: "Unknown", // Default, can be updated later
+      club: "Free Agent", // Default
+      skills: {
         pace: 50,
         shooting: 50,
         passing: 50,
@@ -48,15 +55,25 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
         defending: 50,
         physical: 50,
       },
-      energy: 100,
-      level: 1,
-      experience: 0,
-      coins: 1000,
-      matchesPlayed: 0,
-      wins: 0,
-      losses: 0,
-      draws: 0,
+      style: "balanced", // Default playing style
     };
+
+    // Set user stats for player
+    userData.stats = {
+      matchesPlayed: 0,
+      matchesWon: 0,
+      goals: 0,
+      assists: 0,
+      cleanSheets: 0,
+      yellowCards: 0,
+      redCards: 0,
+      tournamentsWon: 0,
+      skillPoints: 0,
+      totalEarnings: 0,
+    };
+
+    userData.coins = 1000;
+    userData.energy = 100;
   } else if (role === UserRole.MANAGER) {
     const { clubName } = req.body;
     if (!clubName || clubName.trim().length < 3) {
@@ -66,17 +83,31 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
       );
     }
 
-    userData.managerData = {
+    userData.managerInfo = {
       clubName: clubName.trim(),
+      clubLogo: "", // Default empty logo
       budget: 50000,
       reputation: 50,
-      formations: [],
-      squadSize: 0,
-      matchesManaged: 0,
-      wins: 0,
-      losses: 0,
-      draws: 0,
+      experience: 0,
+      level: 1,
     };
+
+    // Set user stats for manager
+    userData.stats = {
+      matchesPlayed: 0,
+      matchesWon: 0,
+      goals: 0,
+      assists: 0,
+      cleanSheets: 0,
+      yellowCards: 0,
+      redCards: 0,
+      tournamentsWon: 0,
+      skillPoints: 0,
+      totalEarnings: 0,
+    };
+
+    userData.coins = 10000; // Managers start with more coins
+    userData.energy = 100;
   }
 
   const user = await User.create(userData);

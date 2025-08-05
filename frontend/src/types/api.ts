@@ -240,6 +240,7 @@ export interface RegisterData {
   password: string;
   role: "player" | "manager";
   position?: string; // Optional for players only
+  clubName?: string; // Optional for managers only
 }
 
 export interface DashboardData {
