@@ -230,7 +230,7 @@ export default function AuthPage() {
           <h1 className="text-4xl font-bold font-football bg-primary-gradient bg-clip-text text-transparent">
             FOOTY CLUB
           </h1>
-          <p className="text-xl font-semibold">UNIVERSE</p>
+          <p className="text-xl font-semibold">UNIVERSEAA</p>
           <p className="text-muted-foreground">
             Enter the ultimate football management experience
           </p>
@@ -716,26 +716,6 @@ export default function AuthPage() {
             </Tabs>
           </CardContent>
         </Card>
-
-        {/* Demo Buttons */}
-        <div className="text-center space-y-2">
-          <div className="flex flex-col gap-2">
-            <Button
-              variant="outline"
-              className="border-primary/50 hover:bg-primary/10"
-              onClick={() => handleDemoLogin("player")}
-            >
-              🎮 Quick Demo Login (Player Mode)
-            </Button>
-            <Button
-              variant="outline"
-              className="border-accent/50 hover:bg-accent/10"
-              onClick={() => handleDemoLogin("manager")}
-            >
-              ⚔️ Quick Demo Login (Manager Mode)
-            </Button>
-          </div>
-        </div>
 
         {/* Features Preview */}
         <div className="grid grid-cols-2 gap-4 text-center">
