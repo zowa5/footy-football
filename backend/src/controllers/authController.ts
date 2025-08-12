@@ -6,6 +6,53 @@ import { asyncHandler, createError } from "../middleware/errorHandler";
 import { UserRole, PlayerPosition } from "../types/common";
 import { registerSchema, loginSchema } from "../utils/validation";
 
+/**
+ * @desc    Get available clubs for player signup
+ * @route   GET /api/auth/clubs
+ * @access  Public
+ */
+export const getAvailableClubs = asyncHandler(
+  async (req: Request, res: Response) => {
+    try {
+      // Get all active managers with their club information
+      const managers = await User.find({
+        role: UserRole.MANAGER,
+        isActive: true,
+      })
+        .select("managerInfo.clubName managerInfo.clubLogo username")
+        .sort({ "managerInfo.clubName": 1 });
+
+      // Transform to club list format
+      const clubs = managers.map((manager) => ({
+        _id: manager._id,
+        clubName: manager.managerInfo?.clubName || "Unknown Club",
+        clubLogo: manager.managerInfo?.clubLogo || "",
+        managerName: manager.username,
+      }));
+
+      // Add "Free Agent" option
+      clubs.unshift({
+        _id: "free-agent",
+        clubName: "Free Agent",
+        clubLogo: "",
+        managerName: "No Manager",
+      });
+
+      res.json({
+        success: true,
+        data: clubs,
+      });
+    } catch (error: any) {
+      console.error("Get clubs error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to fetch clubs",
+        error: error.message,
+      });
+    }
+  }
+);
+
 export const register = asyncHandler(async (req: Request, res: Response) => {
   const validatedData = registerSchema.parse(req.body);
   const { username, email, password, role } = validatedData;
@@ -33,12 +80,13 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
   };
 
   if (role === UserRole.PLAYER) {
-    const { position } = req.body;
+    const { position, playerInfo } = req.body;
     if (!position || !Object.values(PlayerPosition).includes(position)) {
       throw createError("Valid player position is required", 400);
     }
 
-    userData.playerInfo = {
+    // Use playerInfo from request if provided, otherwise use defaults
+    const defaultPlayerInfo = {
       firstName: "Player", // Default value, can be updated later
       lastName: "User", // Default value, can be updated later
       position,
@@ -47,16 +95,42 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
       weight: 70, // Default weight in kg
       nationality: "Unknown", // Default, can be updated later
       club: "Free Agent", // Default
-      skills: {
-        pace: 50,
-        shooting: 50,
-        passing: 50,
-        dribbling: 50,
-        defending: 50,
-        physical: 50,
-      },
+      // Default skill values for all attributes
+      offensiveAwareness: 50,
+      dribbling: 50,
+      lowPass: 50,
+      finishing: 50,
+      placeKicking: 50,
+      speed: 50,
+      kickingPower: 50,
+      physicalContact: 50,
+      stamina: 50,
+      ballWinning: 50,
+      ballControl: 50,
+      tightPossession: 50,
+      loftedPass: 50,
+      heading: 50,
+      curl: 50,
+      acceleration: 50,
+      jump: 50,
+      balance: 50,
+      defensiveAwareness: 50,
+      aggression: 50,
+      gkAwareness: 50,
+      gkClearing: 50,
+      gkReach: 50,
+      gkCatching: 50,
+      gkReflexes: 50,
+      weakFootUsage: 2, // Default 2/4
+      weakFootAcc: 2, // Default 2/4
+      form: 5, // Default 5/8
+      injuryResistance: 2, // Default 2/3
       style: "balanced", // Default playing style
     };
+
+    userData.playerInfo = playerInfo
+      ? { ...defaultPlayerInfo, ...playerInfo }
+      : defaultPlayerInfo;
 
     // Set user stats for player
     userData.stats = {

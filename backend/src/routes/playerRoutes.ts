@@ -1,103 +1,67 @@
 import { Router } from "express";
+import { authenticate } from "../middleware/auth";
 import {
   getPlayerDashboard,
-  getPlayerStats,
-  updatePlayerStats,
-  getPlayerLeaderboard,
-  updatePlayerEnergy,
-  getPlayerTransactions,
-  addPlayerExperience,
-  resetPlayerEnergy,
+  getPlayerSkills,
+  acquireSkill,
+  toggleSkill,
+  upgradeSkill,
+  getPlayerMatches,
+  getLeaderboard,
 } from "../controllers/playerController";
-import { authenticate, authorize } from "../middleware/auth";
-import { UserRole } from "../types/common";
 
 const router = Router();
+
+// All routes require authentication
+router.use(authenticate);
 
 /**
  * @route   GET /api/player/dashboard
  * @desc    Get player dashboard data
- * @access  Private - Player only
+ * @access  Private
  */
-router.get(
-  "/dashboard",
-  authenticate,
-  authorize(UserRole.PLAYER),
-  getPlayerDashboard
-);
+router.get("/dashboard", getPlayerDashboard);
 
 /**
- * @route   GET /api/players/stats
- * @desc    Get current player stats
- * @access  Private - Player only
+ * @route   GET /api/player/skills
+ * @desc    Get player skills and available skill templates
+ * @access  Private
  */
-router.get("/stats", authenticate, authorize(UserRole.PLAYER), getPlayerStats);
+router.get("/skills", getPlayerSkills);
 
 /**
- * @route   PUT /api/players/stats
- * @desc    Update player stats
- * @access  Private - Player only
+ * @route   POST /api/player/skills/acquire
+ * @desc    Acquire a new skill
+ * @access  Private
  */
-router.put(
-  "/stats",
-  authenticate,
-  authorize(UserRole.PLAYER),
-  updatePlayerStats
-);
+router.post("/skills/acquire", acquireSkill);
 
 /**
- * @route   GET /api/players/leaderboard
- * @desc    Get player leaderboard
- * @access  Public
+ * @route   PUT /api/player/skills/:skillId/toggle
+ * @desc    Toggle skill activation
+ * @access  Private
  */
-router.get("/leaderboard", getPlayerLeaderboard);
+router.put("/skills/:skillId/toggle", toggleSkill);
 
 /**
- * @route   PUT /api/players/energy
- * @desc    Update player energy
- * @access  Private - Player only
+ * @route   PUT /api/player/skills/:skillId/upgrade
+ * @desc    Upgrade skill level
+ * @access  Private
  */
-router.put(
-  "/energy",
-  authenticate,
-  authorize(UserRole.PLAYER),
-  updatePlayerEnergy
-);
+router.put("/skills/:skillId/upgrade", upgradeSkill);
 
 /**
- * @route   POST /api/players/energy/reset
- * @desc    Reset player energy to full
- * @access  Private - Player only
+ * @route   GET /api/player/matches
+ * @desc    Get player matches (recent and upcoming)
+ * @access  Private
  */
-router.post(
-  "/energy/reset",
-  authenticate,
-  authorize(UserRole.PLAYER),
-  resetPlayerEnergy
-);
+router.get("/matches", getPlayerMatches);
 
 /**
- * @route   GET /api/players/transactions
- * @desc    Get player transaction history
- * @access  Private - Player only
+ * @route   GET /api/player/leaderboard
+ * @desc    Get leaderboard data with different categories
+ * @access  Private
  */
-router.get(
-  "/transactions",
-  authenticate,
-  authorize(UserRole.PLAYER),
-  getPlayerTransactions
-);
-
-/**
- * @route   POST /api/players/experience
- * @desc    Add experience to player
- * @access  Private - Player only
- */
-router.post(
-  "/experience",
-  authenticate,
-  authorize(UserRole.PLAYER),
-  addPlayerExperience
-);
+router.get("/leaderboard", getLeaderboard);
 
 export default router;

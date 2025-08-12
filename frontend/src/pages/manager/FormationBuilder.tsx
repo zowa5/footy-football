@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -16,10 +16,15 @@ import {
   Users,
   ArrowUpDown,
   Settings,
+  Loader2,
+  AlertCircle,
 } from "lucide-react";
+import { useFormationData } from "@/hooks/useFormationData";
+import { useSquadData } from "@/hooks/useSquadData";
+import { apiClient } from "@/lib/api";
 
 // Formation templates
-const formations = {
+const formationTemplates = {
   "4-4-2": {
     name: "4-4-2",
     positions: [
@@ -342,117 +347,463 @@ const formations = {
   },
 };
 
-// Mock player data
-const availablePlayers = [
-  { id: "1", name: "Alex Rodriguez", position: "CM", overall: 78, energy: 85 },
-  { id: "2", name: "Marcus Silva", position: "ST", overall: 82, energy: 90 },
-  { id: "3", name: "Sarah Johnson", position: "LB", overall: 75, energy: 70 },
-  { id: "4", name: "David Chen", position: "CB", overall: 80, energy: 95 },
-  { id: "5", name: "Emma Wilson", position: "GK", overall: 77, energy: 100 },
-  { id: "6", name: "Luis Garcia", position: "RM", overall: 76, energy: 80 },
-  { id: "7", name: "Anna Kowalski", position: "CDM", overall: 74, energy: 85 },
-  { id: "8", name: "Carlos Lopez", position: "ST", overall: 79, energy: 75 },
-  { id: "9", name: "Nina Petrov", position: "CB", overall: 73, energy: 90 },
-  { id: "10", name: "Tom Anderson", position: "RB", overall: 71, energy: 88 },
-  { id: "11", name: "Lisa Zhang", position: "LW", overall: 77, energy: 82 },
-];
-
 export default function FormationBuilder() {
+  const {
+    formations: availableFormations,
+    loading: formationsLoading,
+    error: formationsError,
+  } = useFormationData();
+  const { squad, loading: squadLoading, error: squadError } = useSquadData();
+
   const [selectedFormation, setSelectedFormation] = useState("4-4-2");
-  const [currentFormation, setCurrentFormation] = useState(formations["4-4-2"]);
-  const [draggedPlayer, setDraggedPlayer] = useState<any>(null);
-  const [isDragging, setIsDragging] = useState(false);
-  const fieldRef = useRef<HTMLDivElement>(null);
+  const [currentFormation, setCurrentFormation] = useState(
+    formationTemplates["4-4-2"]
+  );
+  const [dragOverPosition, setDragOverPosition] = useState<string | null>(null);
+  const [forceUpdate, setForceUpdate] = useState(0);
+  const [savedFormations, setSavedFormations] = useState<any[]>([]);
+  const [showSavedFormations, setShowSavedFormations] = useState(false);
+  const [lastSavedFormation, setLastSavedFormation] = useState<any>(null);
+  const canvasRef = useRef<HTMLDivElement>(null);
+
+  // Load saved formations
+  const loadSavedFormations = async () => {
+    try {
+      console.log("🔄 Loading saved formations...");
+      const response = await apiClient.getManagerFormations();
+      console.log("📡 API Response:", response);
+
+      if (response.success && response.data) {
+        console.log("✅ API call successful");
+        console.log("📋 Custom formations:", response.data.customFormations);
+
+        if (response.data.customFormations) {
+          setSavedFormations(response.data.customFormations);
+          console.log(
+            "💾 Saved formations updated:",
+            response.data.customFormations.length
+          );
+        } else {
+          console.log("⚠️ No custom formations in response");
+          setSavedFormations([]);
+        }
+      } else {
+        console.log("❌ API call failed:", response);
+        setSavedFormations([]);
+      }
+    } catch (error) {
+      console.error("❌ Error loading saved formations:", error);
+      setSavedFormations([]);
+    }
+  };
+
+  // Load formation to formation builder
+  const loadFormationToBuilder = (formation: any) => {
+    console.log("🔄 Loading formation to builder:", formation);
+    console.log("📋 Formation positions:", formation.positions);
+
+    // Set formation type
+    setSelectedFormation(formation.formationType);
+
+    // Convert saved formation positions to builder format
+    const builderPositions = formation.positions.map((pos: any) => {
+      console.log(`🔍 Processing position ${pos.positionName}:`, pos);
+
+      const playerData = pos.playerData
+        ? {
+            _id: pos.playerData._id,
+            username: pos.playerData.username,
+            playerInfo: pos.playerData.playerInfo,
+            stats: pos.playerData.stats,
+            skills: pos.playerData.skills,
+            overallRating: pos.playerData.overallRating,
+          }
+        : null;
+
+      console.log(`👤 Player data for ${pos.positionName}:`, playerData);
+
+      return {
+        id: pos.positionId,
+        name: pos.positionName,
+        x: pos.x,
+        y: pos.y,
+        player: playerData,
+      };
+    });
+
+    console.log("🏗️ Builder positions created:", builderPositions);
+
+    // Update current formation
+    setCurrentFormation({
+      name: formation.name,
+      positions: builderPositions,
+    });
+
+    setLastSavedFormation(formation);
+    console.log("✅ Formation loaded to builder:", builderPositions);
+  };
+
+  // Load saved formations when component mounts
+  useEffect(() => {
+    console.log("🔄 Component mounted, loading saved formations...");
+    loadSavedFormations();
+  }, []);
+
+  // Auto-load latest formation after saved formations are loaded
+  useEffect(() => {
+    if (savedFormations.length > 0) {
+      console.log("🔄 Auto-loading latest formation...");
+      const latestFormation = savedFormations[0]; // Assuming latest is first in array
+      console.log("📋 Latest formation:", latestFormation);
+      loadFormationToBuilder(latestFormation);
+    }
+  }, [savedFormations]);
+
+  // Debug: Log saved formations state changes
+  useEffect(() => {
+    console.log("📋 Saved formations state updated:", savedFormations);
+  }, [savedFormations]);
+
+  // Function to get player's full name
+  const getPlayerFullName = (player: any) => {
+    if (player?.playerInfo?.firstName && player?.playerInfo?.lastName) {
+      return `${player.playerInfo.firstName} ${player.playerInfo.lastName}`;
+    }
+    return player?.username || "Unknown Player";
+  };
+
+  const loading = formationsLoading || squadLoading;
+  const error = formationsError || squadError;
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-stadium-gradient p-6 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto mb-4" />
+          <p className="text-lg text-muted-foreground">
+            Memuat data formation...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-stadium-gradient p-6 flex items-center justify-center">
+        <div className="text-center">
+          <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+          <p className="text-lg text-red-600 mb-4">{error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
+          >
+            Coba Lagi
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!squad || !availableFormations) {
+    return (
+      <div className="min-h-screen bg-stadium-gradient p-6 flex items-center justify-center">
+        <div className="text-center">
+          <AlertCircle className="h-12 w-12 text-yellow-500 mx-auto mb-4" />
+          <p className="text-lg text-yellow-600">Data tidak tersedia</p>
+        </div>
+      </div>
+    );
+  }
 
   const handleFormationChange = (formationKey: string) => {
     setSelectedFormation(formationKey);
-    setCurrentFormation(formations[formationKey as keyof typeof formations]);
+    setCurrentFormation(
+      formationTemplates[formationKey as keyof typeof formationTemplates]
+    );
   };
 
   const handleDragStart = (e: React.DragEvent, player: any) => {
-    setDraggedPlayer(player);
-    setIsDragging(true);
-    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("player", JSON.stringify(player));
   };
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
-    e.dataTransfer.dropEffect = "move";
   };
 
   const handleDrop = (e: React.DragEvent, positionId: string) => {
     e.preventDefault();
-    if (!draggedPlayer) return;
+    const playerData = JSON.parse(e.dataTransfer.getData("player"));
 
-    const newFormation = { ...currentFormation };
+    console.log("Dropping player:", playerData, "to position:", positionId);
 
-    // Remove player from previous position
-    newFormation.positions = newFormation.positions.map((pos) => ({
-      ...pos,
-      player: pos.player?.id === draggedPlayer.id ? null : pos.player,
-    }));
+    setCurrentFormation((prev) => {
+      const newFormation = {
+        ...prev,
+        positions: prev.positions.map((pos) =>
+          pos.id === positionId ? { ...pos, player: playerData } : pos
+        ),
+      };
 
-    // Add player to new position
-    const targetPosition = newFormation.positions.find(
-      (pos) => pos.id === positionId
-    );
-    if (targetPosition) {
-      targetPosition.player = draggedPlayer;
-    }
+      console.log("New formation state:", newFormation);
+      setForceUpdate((prev) => prev + 1); // Force re-render
+      return newFormation;
+    });
 
-    setCurrentFormation(newFormation);
-    setDraggedPlayer(null);
-    setIsDragging(false);
+    setDragOverPosition(null);
+  };
+
+  const handleDragEnter = (positionId: string) => {
+    setDragOverPosition(positionId);
+  };
+
+  const handleDragLeave = () => {
+    setDragOverPosition(null);
   };
 
   const removePlayerFromPosition = (positionId: string) => {
-    const newFormation = { ...currentFormation };
-    const position = newFormation.positions.find(
-      (pos) => pos.id === positionId
-    );
-    if (position) {
-      position.player = null;
-    }
-    setCurrentFormation(newFormation);
+    setCurrentFormation((prev) => ({
+      ...prev,
+      positions: prev.positions.map((pos) =>
+        pos.id === positionId ? { ...pos, player: null } : pos
+      ),
+    }));
   };
 
   const resetFormation = () => {
-    const freshFormation =
-      formations[selectedFormation as keyof typeof formations];
-    setCurrentFormation({
-      ...freshFormation,
-      positions: freshFormation.positions.map((pos) => ({
-        ...pos,
-        player: null,
-      })),
-    });
+    setCurrentFormation(
+      formationTemplates[selectedFormation as keyof typeof formationTemplates]
+    );
   };
 
   const getAssignedPlayers = () => {
     return currentFormation.positions
       .filter((pos) => pos.player)
-      .map((pos) => pos.player.id);
+      .map((pos) => pos.player);
   };
 
   const getUnassignedPlayers = () => {
-    const assignedIds = getAssignedPlayers();
-    return availablePlayers.filter(
-      (player) => !assignedIds.includes(player.id)
-    );
+    const assignedPlayerIds = getAssignedPlayers().map((p) => p._id);
+    return squad.filter((player) => !assignedPlayerIds.includes(player._id));
   };
 
   const calculateOverallRating = () => {
-    const assignedPlayers = currentFormation.positions
-      .filter((pos) => pos.player)
-      .map((pos) => pos.player);
-
+    const assignedPlayers = getAssignedPlayers();
     if (assignedPlayers.length === 0) return 0;
 
-    const totalRating = assignedPlayers.reduce(
-      (sum, player) => sum + player.overall,
-      0
-    );
+    const totalRating = assignedPlayers.reduce((sum, player) => {
+      const playerInfo = player.playerInfo;
+      if (!playerInfo) return sum + 70;
+
+      const rating = Math.round(
+        (playerInfo.offensiveAwareness +
+          playerInfo.dribbling +
+          playerInfo.finishing +
+          playerInfo.speed +
+          playerInfo.physicalContact +
+          playerInfo.stamina) /
+          6
+      );
+      return sum + rating;
+    }, 0);
+
     return Math.round(totalRating / assignedPlayers.length);
+  };
+
+  const saveFormation = async () => {
+    try {
+      // Check if at least one player is assigned
+      const assignedPlayers = currentFormation.positions.filter(
+        (pos) => pos.player
+      );
+      if (assignedPlayers.length === 0) {
+        alert(
+          "Please assign at least one player to the formation before saving."
+        );
+        return;
+      }
+
+      // Generate a unique formation name with timestamp
+      const timestamp = new Date().toLocaleTimeString("en-US", {
+        hour12: false,
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+      });
+      const formationName = `${selectedFormation} - ${timestamp}`;
+
+      const formationData = {
+        name: formationName,
+        positions: currentFormation.positions.map((pos: any) => ({
+          id: pos.id,
+          name: pos.name,
+          x: pos.x,
+          y: pos.y,
+          player: pos.player, // Send the full player object
+        })),
+        formationType: selectedFormation,
+      };
+
+      console.log("Current formation state:", currentFormation);
+      console.log("Formation data to save:", formationData);
+      console.log("Assigned players count:", assignedPlayers.length);
+
+      // Call API to save formation
+      const response = await apiClient.saveCustomFormation(formationData);
+      if (response.success) {
+        alert(`Formation "${formationName}" saved successfully!`);
+
+        // Create formation object to load to builder
+        const savedFormation = {
+          name: formationName,
+          formationType: selectedFormation,
+          positions: currentFormation.positions.map((pos: any) => {
+            console.log(`💾 Saving position ${pos.name}:`, pos);
+            return {
+              positionId: pos.id,
+              positionName: pos.name,
+              playerId: pos.player?._id || null,
+              playerName: pos.player ? getPlayerFullName(pos.player) : null,
+              playerData: pos.player
+                ? {
+                    _id: pos.player._id,
+                    username: pos.player.username,
+                    playerInfo: pos.player.playerInfo,
+                    stats: pos.player.stats,
+                    skills: pos.player.skills,
+                    overallRating: pos.player.overallRating,
+                  }
+                : null,
+              x: pos.x,
+              y: pos.y,
+            };
+          }),
+        };
+
+        console.log("💾 Saved formation object:", savedFormation);
+
+        // Load the saved formation to builder
+        loadFormationToBuilder(savedFormation);
+
+        // Reload saved formations list
+        await loadSavedFormations();
+      } else {
+        // If formation name already exists, try with a different name
+        if (response.message && response.message.includes("already exists")) {
+          const uniqueName = `${selectedFormation} - ${Date.now()}`;
+          const retryData = {
+            name: uniqueName,
+            positions: currentFormation.positions.map((pos: any) => ({
+              id: pos.id,
+              name: pos.name,
+              x: pos.x,
+              y: pos.y,
+              player: pos.player, // Send the full player object
+            })),
+            formationType: selectedFormation,
+          };
+
+          const retryResponse = await apiClient.saveCustomFormation(retryData);
+          if (retryResponse.success) {
+            alert(`Formation "${uniqueName}" saved successfully!`);
+
+            // Create formation object to load to builder
+            const savedFormation = {
+              name: uniqueName,
+              formationType: selectedFormation,
+              positions: currentFormation.positions.map((pos: any) => ({
+                positionId: pos.id,
+                positionName: pos.name,
+                playerId: pos.player?._id || null,
+                playerName: pos.player ? getPlayerFullName(pos.player) : null,
+                playerData: pos.player
+                  ? {
+                      _id: pos.player._id,
+                      username: pos.player.username,
+                      playerInfo: pos.player.playerInfo,
+                      stats: pos.player.stats,
+                      skills: pos.player.skills,
+                      overallRating: pos.player.overallRating,
+                    }
+                  : null,
+                x: pos.x,
+                y: pos.y,
+              })),
+            };
+
+            // Load the saved formation to builder
+            loadFormationToBuilder(savedFormation);
+
+            // Reload saved formations list
+            await loadSavedFormations();
+          } else {
+            alert("Failed to save formation: " + retryResponse.message);
+          }
+        } else {
+          alert("Failed to save formation: " + response.message);
+        }
+      }
+    } catch (error) {
+      console.error("Error saving formation:", error);
+      if (error.message && error.message.includes("already exists")) {
+        // Try with a unique name
+        try {
+          const uniqueName = `${selectedFormation} - ${Date.now()}`;
+          const retryData = {
+            name: uniqueName,
+            positions: currentFormation.positions.map((pos: any) => ({
+              id: pos.id,
+              name: pos.name,
+              x: pos.x,
+              y: pos.y,
+              player: pos.player, // Send the full player object
+            })),
+            formationType: selectedFormation,
+          };
+
+          const retryResponse = await apiClient.saveCustomFormation(retryData);
+          if (retryResponse.success) {
+            alert(`Formation "${uniqueName}" saved successfully!`);
+
+            // Create formation object to load to builder
+            const savedFormation = {
+              name: uniqueName,
+              formationType: selectedFormation,
+              positions: currentFormation.positions.map((pos: any) => ({
+                positionId: pos.id,
+                positionName: pos.name,
+                playerId: pos.player?._id || null,
+                playerName: pos.player ? getPlayerFullName(pos.player) : null,
+                playerData: pos.player
+                  ? {
+                      _id: pos.player._id,
+                      username: pos.player.username,
+                      playerInfo: pos.player.playerInfo,
+                      stats: pos.player.stats,
+                      skills: pos.player.skills,
+                      overallRating: pos.player.overallRating,
+                    }
+                  : null,
+                x: pos.x,
+                y: pos.y,
+              })),
+            };
+
+            // Load the saved formation to builder
+            loadFormationToBuilder(savedFormation);
+
+            // Reload saved formations list
+            await loadSavedFormations();
+          } else {
+            alert("Failed to save formation: " + retryResponse.message);
+          }
+        } catch (retryError) {
+          alert("Error saving formation. Please try again.");
+        }
+      } else {
+        alert("Error saving formation. Please try again.");
+      }
+    }
   };
 
   return (
@@ -465,334 +816,277 @@ export default function FormationBuilder() {
               Formation Builder
             </h1>
             <p className="text-muted-foreground">
-              Design your tactical setup and assign players
+              Build and customize your team formation
             </p>
+            {lastSavedFormation && (
+              <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded-lg">
+                <p className="text-sm text-green-700">
+                  <span className="font-semibold">Active Formation:</span>{" "}
+                  {lastSavedFormation.name}
+                </p>
+                <p className="text-xs text-green-600">
+                  Last saved: {new Date().toLocaleTimeString()}
+                </p>
+              </div>
+            )}
           </div>
           <div className="flex items-center gap-3">
             <Button variant="outline" onClick={resetFormation}>
               <RotateCcw className="h-4 w-4 mr-2" />
               Reset
             </Button>
-            <Button className="football-button">
+            <Button onClick={saveFormation} className="football-button">
               <Save className="h-4 w-4 mr-2" />
               Save Formation
             </Button>
           </div>
         </div>
 
-        {/* Formation Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Card className="stat-card">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <Target className="h-8 w-8 text-primary" />
-                <div>
-                  <p className="text-sm text-muted-foreground">Formation</p>
-                  <p className="text-xl font-bold">{currentFormation.name}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="stat-card">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <Users className="h-8 w-8 text-accent" />
-                <div>
-                  <p className="text-sm text-muted-foreground">Players Set</p>
-                  <p className="text-xl font-bold">
-                    {getAssignedPlayers().length}/11
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="stat-card">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <ArrowUpDown className="h-8 w-8 text-yellow-500" />
-                <div>
-                  <p className="text-sm text-muted-foreground">Team Rating</p>
-                  <p className="text-xl font-bold">
-                    {calculateOverallRating()}
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="stat-card">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <Settings className="h-8 w-8 text-primary" />
-                <div>
-                  <p className="text-sm text-muted-foreground">Formation</p>
-                  <Select
-                    value={selectedFormation}
-                    onValueChange={handleFormationChange}
-                  >
-                    <SelectTrigger className="bg-secondary/50 border-none">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <div className="p-2">
-                        <div className="text-xs font-semibold text-muted-foreground mb-2 px-2">
-                          ATTACKING
-                        </div>
-                        <SelectItem value="4-3-3">4-3-3</SelectItem>
-                        <SelectItem value="3-4-3">3-4-3</SelectItem>
-                        <SelectItem value="4-2-3-1">4-2-3-1</SelectItem>
-                        <SelectItem value="4-3-3-CAM">4-3-3 (CAM)</SelectItem>
-                        <SelectItem value="4-2-1-3">4-2-1-3</SelectItem>
-                        <SelectItem value="4-3-2-1">4-3-2-1</SelectItem>
-                        <SelectItem value="3-4-2-1">3-4-2-1</SelectItem>
-
-                        <div className="text-xs font-semibold text-muted-foreground mb-2 mt-4 px-2">
-                          BALANCED
-                        </div>
-                        <SelectItem value="4-4-2">4-4-2</SelectItem>
-                        <SelectItem value="4-1-4-1">4-1-4-1</SelectItem>
-                        <SelectItem value="4-4-1-1">4-4-1-1</SelectItem>
-                        <SelectItem value="4-1-2-1-2">4-1-2-1-2</SelectItem>
-                        <SelectItem value="3-4-1-2">3-4-1-2</SelectItem>
-                        <SelectItem value="4-3-1-2">4-3-1-2</SelectItem>
-
-                        <div className="text-xs font-semibold text-muted-foreground mb-2 mt-4 px-2">
-                          DEFENSIVE
-                        </div>
-                        <SelectItem value="5-3-2">5-3-2</SelectItem>
-                        <SelectItem value="5-4-1">5-4-1</SelectItem>
-                        <SelectItem value="4-5-1">4-5-1</SelectItem>
-                        <SelectItem value="5-2-1-2">5-2-1-2</SelectItem>
-                        <SelectItem value="3-1-4-2">3-1-4-2</SelectItem>
-
-                        <div className="text-xs font-semibold text-muted-foreground mb-2 mt-4 px-2">
-                          🚀 WING PLAY
-                        </div>
-                        <SelectItem value="3-5-2">3-5-2</SelectItem>
-                        <SelectItem value="4-1-3-2">4-1-3-2</SelectItem>
-                      </div>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Football Field */}
-          <Card className="lg:col-span-2 stat-card">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Target className="h-5 w-5" />
-                Tactical Field - {currentFormation.name}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-4">
-              <div
-                ref={fieldRef}
-                className="relative w-full aspect-[2/3] bg-gradient-to-b from-green-600 to-green-700 rounded-lg overflow-hidden field-gradient"
-                style={{
-                  backgroundImage: `
-                    linear-gradient(to bottom, rgba(255,255,255,0.1) 1px, transparent 1px),
-                    linear-gradient(to right, rgba(255,255,255,0.1) 1px, transparent 1px)
-                  `,
-                  backgroundSize: "10% 10%",
-                }}
-                onDragOver={handleDragOver}
-              >
-                {/* Field markings */}
-                <div className="absolute inset-4 border-2 border-white/30 rounded">
-                  <div className="absolute top-0 left-1/2 transform -translate-x-1/2 w-24 h-16 border-2 border-white/30 border-t-0"></div>
-                  <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-24 h-16 border-2 border-white/30 border-b-0"></div>
-                  <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-white/30"></div>
-                  <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-16 h-16 border-2 border-white/30 rounded-full"></div>
-                </div>
-
-                {/* Player positions */}
-                {currentFormation.positions.map((position) => (
-                  <div
-                    key={position.id}
-                    className="absolute transform -translate-x-1/2 -translate-y-1/2 cursor-pointer"
-                    style={{
-                      left: `${position.x}%`,
-                      top: `${position.y}%`,
-                    }}
-                    onDrop={(e) => handleDrop(e, position.id)}
-                    onDragOver={handleDragOver}
-                  >
-                    {position.player ? (
-                      <div className="group relative flex items-center justify-center">
-                        <div className="w-16 h-16 bg-primary rounded-full flex flex-col items-center justify-center text-xs font-bold text-primary-foreground shadow-lg border-2 border-white hover:scale-110 transition-transform relative">
-                          <div className="flex flex-col items-center justify-center h-full w-full">
-                            <span className="text-[10px] leading-tight text-center">
-                              {position.player.name.split(" ")[0]}
-                            </span>
-                            <span className="text-[8px] opacity-80 leading-tight">
-                              {position.player.overall}
-                            </span>
-                          </div>
-                        </div>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="absolute -top-2 -right-2 w-6 h-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity bg-destructive text-destructive-foreground border-destructive"
-                          onClick={() => removePlayerFromPosition(position.id)}
-                        >
-                          ×
-                        </Button>
-                      </div>
-                    ) : (
-                      <div className="w-16 h-16 border-2 border-white border-dashed rounded-full flex items-center justify-center text-white/70 text-xs font-bold hover:bg-white/10 transition-colors">
-                        <span className="text-center leading-tight">
-                          {position.name}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Available Players */}
-          <Card className="stat-card">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Users className="h-5 w-5" />
-                Available Players
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-4">
-              <div className="space-y-3 max-h-96 overflow-y-auto">
-                {getUnassignedPlayers().map((player) => (
-                  <div
-                    key={player.id}
-                    draggable
-                    onDragStart={(e) => handleDragStart(e, player)}
-                    className="p-3 bg-secondary/30 rounded-lg cursor-move hover:bg-secondary/50 transition-colors border border-border"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h4 className="font-semibold text-sm">{player.name}</h4>
-                        <p className="text-xs text-muted-foreground">
-                          {player.position}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <Badge
-                          variant="outline"
-                          className="text-primary border-primary/50"
-                        >
-                          {player.overall}
-                        </Badge>
-                        <div className="text-xs text-muted-foreground mt-1">
-                          Energy: {player.energy}%
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-
-                {getUnassignedPlayers().length === 0 && (
-                  <div className="text-center py-8">
-                    <Users className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-                    <p className="text-sm text-muted-foreground">
-                      All players assigned
-                    </p>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Formation Instructions */}
+        {/* Formation Selection */}
         <Card className="stat-card">
           <CardHeader>
-            <CardTitle>Formation Guide & Tactics</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <Target className="h-5 w-5" />
+              Select Formation
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Instructions */}
-              <div>
-                <h4 className="font-semibold text-primary mb-3">
-                  How to Use Formation Builder
-                </h4>
-                <div className="space-y-3 text-sm">
-                  <div className="space-y-1">
-                    <h5 className="font-semibold">1. Choose Formation</h5>
-                    <p className="text-muted-foreground">
-                      Select your preferred tactical formation from the
-                      categorized dropdown menu.
-                    </p>
-                  </div>
-                  <div className="space-y-1">
-                    <h5 className="font-semibold">2. Drag & Drop Players</h5>
-                    <p className="text-muted-foreground">
-                      Drag players from the available list to position slots on
-                      the field.
-                    </p>
-                  </div>
-                  <div className="space-y-1">
-                    <h5 className="font-semibold">3. Save & Deploy</h5>
-                    <p className="text-muted-foreground">
-                      Once satisfied with your lineup, save the formation for
-                      upcoming matches.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Tactical Categories */}
-              <div>
-                <h4 className="font-semibold text-primary mb-3">
-                  Tactical Categories
-                </h4>
-                <div className="space-y-3 text-sm">
-                  <div className="space-y-1">
-                    <h5 className="font-semibold flex items-center gap-1">
-                      🔥 Attacking Formations
-                    </h5>
-                    <p className="text-muted-foreground">
-                      High pressing, multiple attacking options. Great for teams
-                      with skilled forwards and creative midfielders.
-                    </p>
-                  </div>
-                  <div className="space-y-1">
-                    <h5 className="font-semibold flex items-center gap-1">
-                      ⚖️ Balanced Formations
-                    </h5>
-                    <p className="text-muted-foreground">
-                      Equal focus on attack and defense. Perfect for versatile
-                      squads and adapting to different opponents.
-                    </p>
-                  </div>
-                  <div className="space-y-1">
-                    <h5 className="font-semibold flex items-center gap-1">
-                      🛡️ Defensive Formations
-                    </h5>
-                    <p className="text-muted-foreground">
-                      Solid defense with counter-attacking focus. Ideal when
-                      facing stronger opponents or protecting a lead.
-                    </p>
-                  </div>
-                  <div className="space-y-1">
-                    <h5 className="font-semibold flex items-center gap-1">
-                      🚀 Wing Play Formations
-                    </h5>
-                    <p className="text-muted-foreground">
-                      Utilizes wide areas effectively. Perfect for teams with
-                      fast wingers and overlapping fullbacks.
-                    </p>
-                  </div>
-                </div>
-              </div>
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+              {Object.keys(formationTemplates).map((formation) => (
+                <Button
+                  key={formation}
+                  variant={
+                    selectedFormation === formation ? "default" : "outline"
+                  }
+                  onClick={() => handleFormationChange(formation)}
+                  className="h-20 flex flex-col items-center justify-center gap-2"
+                >
+                  <span className="text-lg font-bold">{formation}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {
+                      formationTemplates[
+                        formation as keyof typeof formationTemplates
+                      ].positions.length
+                    }{" "}
+                    Players
+                  </span>
+                </Button>
+              ))}
             </div>
           </CardContent>
         </Card>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Formation Canvas */}
+          <div className="lg:col-span-2">
+            <Card className="stat-card">
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between">
+                  <span>Formation: {selectedFormation}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground">
+                      Overall Rating:
+                    </span>
+                    <Badge
+                      variant="outline"
+                      className="text-primary border-primary/50"
+                    >
+                      {calculateOverallRating()}
+                    </Badge>
+                  </div>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div
+                  ref={canvasRef}
+                  className="relative w-full h-96 bg-gradient-to-b from-green-800 to-green-600 rounded-lg border-2 border-white/20 overflow-hidden"
+                  style={{
+                    backgroundImage: "url('/stadium-hero.jpg')",
+                    backgroundSize: "cover",
+                  }}
+                >
+                  {/* Field markings */}
+                  <div className="absolute inset-0 border-2 border-white/30 border-dashed"></div>
+                  <div className="absolute top-1/2 left-0 right-0 h-px bg-white/30"></div>
+                  <div className="absolute top-1/4 left-0 right-0 h-px bg-white/20"></div>
+                  <div className="absolute top-3/4 left-0 right-0 h-px bg-white/20"></div>
+
+                  {/* Player positions */}
+                  {currentFormation.positions.map((position) => (
+                    <div
+                      key={position.id}
+                      className={`absolute w-16 h-16 flex items-center justify-center transition-all duration-200 ${
+                        dragOverPosition === position.id
+                          ? "scale-110 bg-primary/20 border-2 border-primary rounded-full"
+                          : "bg-white/10 border border-white/30 rounded-full hover:bg-white/20"
+                      }`}
+                      style={{
+                        left: `calc(${position.x}% - 2rem)`,
+                        top: `calc(${position.y}% - 2rem)`,
+                      }}
+                      onDragOver={handleDragOver}
+                      onDrop={(e) => handleDrop(e, position.id)}
+                      onDragEnter={() => handleDragEnter(position.id)}
+                      onDragLeave={handleDragLeave}
+                    >
+                      {position.player ? (
+                        <div className="text-center">
+                          <div className="text-xs font-bold text-white">
+                            {getPlayerFullName(position.player)}
+                          </div>
+                          <div className="text-xs text-white/80">
+                            {position.player.playerInfo?.position || "Unknown"}
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            className="h-4 w-4 p-0 text-xs mt-1"
+                            onClick={() =>
+                              removePlayerFromPosition(position.id)
+                            }
+                          >
+                            ×
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="text-center text-white/60">
+                          <div className="text-xs">{position.name}</div>
+                          <div className="text-xs opacity-50">Drop player</div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Available Players */}
+          <div className="space-y-6">
+            {/* Squad Overview */}
+            <Card className="stat-card">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="h-5 w-5" />
+                  Squad Overview
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">
+                      Total Players:
+                    </span>
+                    <span className="font-semibold">{squad.length}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">
+                      Assigned:
+                    </span>
+                    <span className="font-semibold text-green-500">
+                      {getAssignedPlayers().length}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">
+                      Available:
+                    </span>
+                    <span className="font-semibold text-blue-500">
+                      {getUnassignedPlayers().length}
+                    </span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Available Players */}
+            <Card className="stat-card">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <ArrowUpDown className="h-5 w-5" />
+                  Available Players
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2 max-h-64 overflow-y-auto">
+                  {getUnassignedPlayers().map((player) => {
+                    const playerInfo = player.playerInfo;
+                    const overall = playerInfo
+                      ? Math.round(
+                          (playerInfo.offensiveAwareness +
+                            playerInfo.dribbling +
+                            playerInfo.finishing +
+                            playerInfo.speed +
+                            playerInfo.physicalContact +
+                            playerInfo.stamina) /
+                            6
+                        )
+                      : 70;
+
+                    return (
+                      <div
+                        key={player._id}
+                        draggable
+                        onDragStart={(e) => handleDragStart(e, player)}
+                        className="flex items-center gap-3 p-2 rounded-lg border border-border hover:bg-secondary/50 cursor-move transition-colors"
+                      >
+                        <div className="w-8 h-8 bg-primary/20 rounded-full flex items-center justify-center text-xs font-bold">
+                          {overall}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium text-sm truncate">
+                            {getPlayerFullName(player)}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {playerInfo?.position || "Unknown Position"}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Formation Info */}
+            <Card className="stat-card">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Settings className="h-5 w-5" />
+                  Formation Info
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  <div>
+                    <span className="text-sm text-muted-foreground">Type:</span>
+                    <div className="font-semibold">{selectedFormation}</div>
+                  </div>
+                  <div>
+                    <span className="text-sm text-muted-foreground">
+                      Players:
+                    </span>
+                    <div className="font-semibold">
+                      {currentFormation.positions.length}
+                    </div>
+                  </div>
+                  <div>
+                    <span className="text-sm text-muted-foreground">
+                      Style:
+                    </span>
+                    <div className="font-semibold">
+                      {selectedFormation === "4-4-2" && "Balanced"}
+                      {selectedFormation === "4-3-3" && "Attacking"}
+                      {selectedFormation === "3-5-2" && "Wing Play"}
+                      {selectedFormation === "4-2-3-1" && "Counter Attack"}
+                      {selectedFormation === "5-3-2" && "Defensive"}
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
       </div>
     </div>
   );

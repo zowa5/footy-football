@@ -117,25 +117,25 @@ class ApiClient {
 
   // Manager endpoints
   async getManagerDashboard(): Promise<ApiResponse<DashboardData>> {
-    return this.request<ApiResponse<DashboardData>>("/manager/dashboard");
+    return this.request<ApiResponse<DashboardData>>("/managers/dashboard");
   }
 
   async getSquad(): Promise<ApiResponse<User[]>> {
-    return this.request<ApiResponse<User[]>>("/manager/squad");
+    return this.request<ApiResponse<User[]>>("/managers/squad");
   }
 
   async updateSquad(squadData: {
     players: string[];
     formation: string;
   }): Promise<ApiResponse<any>> {
-    return this.request<ApiResponse<any>>("/manager/squad", {
+    return this.request<ApiResponse<any>>("/managers/squad", {
       method: "PUT",
       body: JSON.stringify(squadData),
     });
   }
 
   async getManagerMatches(): Promise<ApiResponse<Match[]>> {
-    return this.request<ApiResponse<Match[]>>("/manager/matches");
+    return this.request<ApiResponse<Match[]>>("/managers/matches");
   }
 
   // Formation endpoints

@@ -1,106 +1,125 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { Zap, Star, Info } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  Zap,
+  Star,
+  Info,
+  TrendingUp,
+  ShoppingCart,
+  ArrowRight,
+} from "lucide-react";
+import { Link } from "react-router-dom";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { PLAYER_SKILLS, COM_STYLES } from "@/constants/gameConstants";
-
-// Mock player data
-const mockPlayerData = {
-  level: 25,
-  skillPoints: 3,
-  stylePoints: 2,
-  skills: ["longRangeShot", "oneTouch", "throughPassing"],
-  styles: ["tikiTaka", "counterAttack"],
-  experience: 7500,
-  nextLevelExp: 10000,
-};
+import { usePlayerSkills, useToggleSkill } from "@/hooks/api";
+import { useAuth } from "@/hooks/useAuth";
+import type { PlayerSkill, SkillTemplate } from "@/types/api";
 
 export default function SkillsAndStyles() {
   const [selectedTab, setSelectedTab] = useState("skills");
+  const { user } = useAuth();
+  const { data: skillsData, isLoading } = usePlayerSkills();
+  const toggleSkillMutation = useToggleSkill();
 
-  const calculateProgress = (current: number, total: number) => {
-    return (current / total) * 100;
+  const playerSkills = skillsData?.data?.playerSkills || [];
+  const skillTemplates = skillsData?.data?.skillTemplates || [];
+  const skillPoints = skillsData?.data?.skillPoints || 0;
+  const stylePoints = skillsData?.data?.stylePoints || 0;
+
+  const handleToggleSkill = (skillId: string) => {
+    toggleSkillMutation.mutate(skillId);
   };
 
-  const SkillCard = ({ skill }: { skill: (typeof PLAYER_SKILLS)[0] }) => {
-    const isOwned = mockPlayerData.skills.includes(skill.id);
+  // Get owned skills with their template data
+  const getOwnedSkills = (skillType: "playerSkill" | "style") => {
+    return playerSkills
+      .map((playerSkill) => {
+        const template = skillTemplates.find(
+          (t) => t.skillId === playerSkill.skillId && t.skillType === skillType
+        );
+        return template ? { ...template, playerSkill } : null;
+      })
+      .filter(Boolean) as (SkillTemplate & { playerSkill: PlayerSkill })[];
+  };
 
+  const OwnedSkillCard = ({
+    skill,
+    playerSkill,
+  }: {
+    skill: SkillTemplate;
+    playerSkill: PlayerSkill;
+  }) => {
     return (
-      <Card
-        className={`skill-card transition-all duration-300 ${
-          isOwned ? "border-primary/50 bg-primary/5" : ""
-        }`}
-      >
+      <Card className="skill-card transition-all duration-300 border-primary/50 bg-primary/5">
         <CardContent className="p-4">
           <div className="flex items-start justify-between">
-            <div>
+            <div className="flex-1">
               <div className="flex items-center gap-2 mb-2">
-                <h3 className="font-semibold">{skill.name}</h3>
-                {isOwned && (
-                  <Badge variant="secondary" className="bg-primary/20">
-                    Equipped
-                  </Badge>
-                )}
+                <h3 className="font-semibold">{skill.skillName}</h3>
+                <Badge
+                  variant={playerSkill.isActive ? "default" : "secondary"}
+                  className={
+                    playerSkill.isActive ? "bg-green-600" : "bg-gray-500"
+                  }
+                >
+                  {playerSkill.isActive ? "Active" : "Inactive"}
+                </Badge>
               </div>
               <p className="text-sm text-muted-foreground mb-3">
                 {skill.description}
               </p>
-            </div>
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger>
-                  <Info className="h-4 w-4 text-muted-foreground" />
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p className="text-sm">{skill.details}</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  };
 
-  const StyleCard = ({ style }: { style: (typeof COM_STYLES)[0] }) => {
-    const isOwned = mockPlayerData.styles.includes(style.id);
-
-    return (
-      <Card
-        className={`style-card transition-all duration-300 ${
-          isOwned ? "border-primary/50 bg-primary/5" : ""
-        }`}
-      >
-        <CardContent className="p-4">
-          <div className="flex items-start justify-between">
-            <div>
-              <div className="flex items-center gap-2 mb-2">
-                <h3 className="font-semibold">{style.name}</h3>
-                {isOwned && (
-                  <Badge variant="secondary" className="bg-primary/20">
-                    Active
-                  </Badge>
-                )}
+              {/* Level & Cost Info */}
+              <div className="flex items-center gap-4 mb-3 text-sm">
+                <div className="flex items-center gap-1">
+                  <span className="font-medium">Level:</span>
+                  <span className="text-primary">{playerSkill.level}</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <span className="font-medium">Original Cost:</span>
+                  {skill.currency === "skillPoints" && (
+                    <Zap className="h-3 w-3 text-primary" />
+                  )}
+                  {skill.currency === "stylePoints" && (
+                    <Star className="h-3 w-3 text-primary" />
+                  )}
+                  <span className="text-muted-foreground">
+                    {skill.cost} {skill.currency}
+                  </span>
+                </div>
               </div>
-              <p className="text-sm text-muted-foreground mb-3">
-                {style.description}
-              </p>
+
+              {/* Toggle Action */}
+              <Button
+                size="sm"
+                variant={playerSkill.isActive ? "destructive" : "default"}
+                onClick={() => handleToggleSkill(skill.skillId)}
+                disabled={toggleSkillMutation.isPending}
+                className="w-full"
+              >
+                {toggleSkillMutation.isPending
+                  ? "Processing..."
+                  : playerSkill.isActive
+                  ? "Deactivate"
+                  : "Activate"}
+              </Button>
             </div>
+
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger>
-                  <Info className="h-4 w-4 text-muted-foreground" />
+                  <Info className="h-4 w-4 text-muted-foreground ml-2" />
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p className="text-sm">{style.details}</p>
+                  <p className="text-sm max-w-xs">{skill.longDescription}</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
@@ -109,6 +128,44 @@ export default function SkillsAndStyles() {
       </Card>
     );
   };
+
+  const EmptyStateCard = ({
+    skillType,
+  }: {
+    skillType: "skills" | "styles";
+  }) => (
+    <Alert className="col-span-full">
+      <ShoppingCart className="h-4 w-4" />
+      <AlertDescription className="flex items-center justify-between">
+        <div>
+          <p className="font-medium mb-1">No {skillType} owned yet!</p>
+          <p className="text-sm text-muted-foreground">
+            Visit the store to purchase {skillType} that you can activate and
+            deactivate here.
+          </p>
+        </div>
+        <Link to="/player/store">
+          <Button variant="outline" size="sm" className="ml-4">
+            Go to Store
+            <ArrowRight className="h-3 w-3 ml-1" />
+          </Button>
+        </Link>
+      </AlertDescription>
+    </Alert>
+  );
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-stadium-gradient p-6">
+        <div className="max-w-4xl mx-auto space-y-6">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto mb-4"></div>
+            <p>Loading skills...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-stadium-gradient p-6">
@@ -119,65 +176,44 @@ export default function SkillsAndStyles() {
               Skills & Styles
             </h1>
             <p className="text-muted-foreground">
-              Manage your player's skills and playing style
+              Activate and deactivate your owned skills and playing styles
             </p>
           </div>
 
-          <Card className="w-full md:w-auto">
-            <CardContent className="p-4">
-              <div className="flex flex-col gap-2">
-                <div className="flex items-center gap-2">
-                  <Star className="h-4 w-4 text-primary" />
-                  <span className="text-sm">Level {mockPlayerData.level}</span>
+          <div className="flex gap-4">
+            <Card className="w-full md:w-auto">
+              <CardContent className="p-4">
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center gap-2">
+                    <Zap className="h-4 w-4 text-primary" />
+                    <span className="text-sm">Skill Points</span>
+                  </div>
+                  <div className="text-2xl font-bold">{skillPoints}</div>
+                  <p className="text-xs text-muted-foreground">
+                    Go to store to buy skills
+                  </p>
                 </div>
-                <Progress
-                  value={calculateProgress(
-                    mockPlayerData.experience,
-                    mockPlayerData.nextLevelExp
-                  )}
-                  className="h-2"
-                />
-                <div className="text-xs text-muted-foreground">
-                  {mockPlayerData.experience} / {mockPlayerData.nextLevelExp} XP
+              </CardContent>
+            </Card>
+
+            <Card className="w-full md:w-auto">
+              <CardContent className="p-4">
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center gap-2">
+                    <Star className="h-4 w-4 text-primary" />
+                    <span className="text-sm">Style Points</span>
+                  </div>
+                  <div className="text-2xl font-bold">{stylePoints}</div>
+                  <p className="text-xs text-muted-foreground">
+                    Go to store to buy styles
+                  </p>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2 mb-1">
-                <Zap className="h-4 w-4 text-primary" />
-                <span className="font-semibold">Available Skill Points</span>
-              </div>
-              <div className="text-2xl font-bold">
-                {mockPlayerData.skillPoints}
-              </div>
-              <p className="text-sm text-muted-foreground">
-                Use these to unlock new skills
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2 mb-1">
-                <Star className="h-4 w-4 text-primary" />
-                <span className="font-semibold">Style Points</span>
-              </div>
-              <div className="text-2xl font-bold">
-                {mockPlayerData.stylePoints}
-              </div>
-              <p className="text-sm text-muted-foreground">
-                Use these to unlock playing styles
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-
-        <Card>
+        <Card className="stat-card">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Zap className="h-6 w-6 text-primary" />
@@ -192,24 +228,44 @@ export default function SkillsAndStyles() {
                   Skills
                 </TabsTrigger>
                 <TabsTrigger value="styles">
-                  <Star className="h-4 w-4 mr-2" />
-                  Playing Styles
+                  <TrendingUp className="h-4 w-4 mr-2" />
+                  COM Playing Styles
                 </TabsTrigger>
               </TabsList>
 
               <TabsContent value="skills" className="mt-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {PLAYER_SKILLS.map((skill) => (
-                    <SkillCard key={skill.id} skill={skill} />
-                  ))}
+                  {(() => {
+                    const ownedSkills = getOwnedSkills("playerSkill");
+                    if (ownedSkills.length === 0) {
+                      return <EmptyStateCard skillType="skills" />;
+                    }
+                    return ownedSkills.map((skill) => (
+                      <OwnedSkillCard
+                        key={skill._id}
+                        skill={skill}
+                        playerSkill={skill.playerSkill}
+                      />
+                    ));
+                  })()}
                 </div>
               </TabsContent>
 
               <TabsContent value="styles" className="mt-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {COM_STYLES.map((style) => (
-                    <StyleCard key={style.id} style={style} />
-                  ))}
+                  {(() => {
+                    const ownedStyles = getOwnedSkills("style");
+                    if (ownedStyles.length === 0) {
+                      return <EmptyStateCard skillType="styles" />;
+                    }
+                    return ownedStyles.map((skill) => (
+                      <OwnedSkillCard
+                        key={skill._id}
+                        skill={skill}
+                        playerSkill={skill.playerSkill}
+                      />
+                    ));
+                  })()}
                 </div>
               </TabsContent>
             </Tabs>

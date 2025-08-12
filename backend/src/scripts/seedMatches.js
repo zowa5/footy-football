@@ -181,20 +181,45 @@ async function seedMatches() {
     const matchTypes = ["friendly", "ranked", "tournament"];
     const statuses = ["completed", "in_progress", "scheduled"];
 
+    // Get all unique clubs for creating club vs club matches
+    const playerClubs = players
+      .filter((p) => p.playerInfo?.club)
+      .map((p) => p.playerInfo.club);
+    const managerClubs = managers
+      .filter((m) => m.managerInfo?.clubName)
+      .map((m) => m.managerInfo.clubName);
+
+    const allClubs = [...new Set([...playerClubs, ...managerClubs])];
+    console.log(`Found ${allClubs.length} unique clubs:`, allClubs);
+
     // Generate matches for the last 30 days
     for (let day = 0; day < 30; day++) {
       const matchDate = new Date();
       matchDate.setDate(matchDate.getDate() - day);
 
-      // Generate 2-8 matches per day
-      const matchesPerDay = Math.floor(Math.random() * 7) + 2;
+      // Generate 2-6 matches per day
+      const matchesPerDay = Math.floor(Math.random() * 5) + 2;
 
       for (let match = 0; match < matchesPerDay; match++) {
-        // Random players for home and away teams
-        const homePlayer = players[Math.floor(Math.random() * players.length)];
-        const awayPlayer = players[Math.floor(Math.random() * players.length)];
+        // Random clubs for home and away teams
+        const homeClub = allClubs[Math.floor(Math.random() * allClubs.length)];
+        const awayClub = allClubs[Math.floor(Math.random() * allClubs.length)];
 
-        if (homePlayer._id.equals(awayPlayer._id)) continue; // Skip same player
+        if (homeClub === awayClub) continue; // Skip same club
+
+        // Find a representative player/manager for each club
+        const homeRepresentative = [...players, ...managers].find(
+          (p) =>
+            p.playerInfo?.club === homeClub ||
+            p.managerInfo?.clubName === homeClub
+        );
+        const awayRepresentative = [...players, ...managers].find(
+          (p) =>
+            p.playerInfo?.club === awayClub ||
+            p.managerInfo?.clubName === awayClub
+        );
+
+        if (!homeRepresentative || !awayRepresentative) continue;
 
         const homeScore = Math.floor(Math.random() * 6); // 0-5 goals
         const awayScore = Math.floor(Math.random() * 6); // 0-5 goals
@@ -220,14 +245,12 @@ async function seedMatches() {
 
         const newMatch = {
           homeTeam: {
-            userId: homePlayer._id,
-            teamName:
-              homePlayer.playerInfo?.club || homePlayer.username + "'s Team",
+            userId: homeRepresentative._id,
+            teamName: homeClub,
           },
           awayTeam: {
-            userId: awayPlayer._id,
-            teamName:
-              awayPlayer.playerInfo?.club || awayPlayer.username + "'s Team",
+            userId: awayRepresentative._id,
+            teamName: awayClub,
           },
           type: matchType,
           status: status,

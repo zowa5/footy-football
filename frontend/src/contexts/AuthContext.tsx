@@ -1,5 +1,6 @@
 // Authentication Context
 import React, { createContext, useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "../lib/api";
 import type { User } from "../types/api";
 
@@ -24,6 +25,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [token, setToken] = useState<string | null>(null);
+  const queryClient = useQueryClient();
 
   // Debug state changes
   useEffect(() => {
@@ -106,6 +108,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const login = (userData: User, authToken: string) => {
     console.log("🔐 AuthContext.login called with:", { userData, authToken });
+    // Clear React Query cache before setting new user data
+    queryClient.clear();
     // Update API client with new token
     apiClient.setToken(authToken);
     // Store token in localStorage
@@ -120,10 +124,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const logout = () => {
+    console.log("🚪 Logout called - clearing cache and user data");
+    // Clear React Query cache
+    queryClient.clear();
+    // Clear API client token
     apiClient.setToken(null);
+    // Remove token from localStorage
     localStorage.removeItem("authToken");
+    // Clear state
     setToken(null);
     setUser(null);
+    console.log("✅ Logout completed - cache and user data cleared");
   };
 
   const refetchProfile = async () => {

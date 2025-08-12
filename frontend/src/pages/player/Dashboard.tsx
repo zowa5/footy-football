@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { usePlayerDashboard } from "../../hooks/usePlayerDashboard";
+import { usePlayerDashboard } from "@/hooks/api";
 import {
   User,
   Target,
@@ -94,22 +94,9 @@ export default function PlayerDashboard() {
     return team?.userId?.username || "Unknown Team";
   }; // Convert player skills to attributes format for display
   const playerAttributes = [
-    // Basic PES-like skills from our model
     {
-      name: "Pace",
-      value: playerInfo?.pace || 50,
-      max: 99,
-      category: "physical",
-    },
-    {
-      name: "Shooting",
-      value: playerInfo?.shooting || 50,
-      max: 99,
-      category: "offensive",
-    },
-    {
-      name: "Passing",
-      value: playerInfo?.passing || 50,
+      name: "Offensive Awareness",
+      value: playerInfo?.offensiveAwareness || 50,
       max: 99,
       category: "offensive",
     },
@@ -120,16 +107,166 @@ export default function PlayerDashboard() {
       category: "offensive",
     },
     {
-      name: "Defending",
-      value: playerInfo?.defending || 50,
+      name: "Low Pass",
+      value: playerInfo?.lowPass || 50,
+      max: 99,
+      category: "offensive",
+    },
+    {
+      name: "Finishing",
+      value: playerInfo?.finishing || 50,
+      max: 99,
+      category: "offensive",
+    },
+    {
+      name: "Place Kicking",
+      value: playerInfo?.placeKicking || 50,
+      max: 99,
+      category: "offensive",
+    },
+    {
+      name: "Speed",
+      value: playerInfo?.speed || 50,
+      max: 99,
+      category: "physical",
+    },
+    {
+      name: "Kicking Power",
+      value: playerInfo?.kickingPower || 50,
+      max: 99,
+      category: "physical",
+    },
+    {
+      name: "Physical Contact",
+      value: playerInfo?.physicalContact || 50,
+      max: 99,
+      category: "physical",
+    },
+    {
+      name: "Stamina",
+      value: playerInfo?.stamina || 50,
+      max: 99,
+      category: "physical",
+    },
+    {
+      name: "Ball Winning",
+      value: playerInfo?.ballWinning || 50,
       max: 99,
       category: "defensive",
     },
     {
-      name: "Physical",
-      value: playerInfo?.physical || 50,
+      name: "Ball Control",
+      value: playerInfo?.ballControl || 50,
+      max: 99,
+      category: "offensive",
+    },
+    {
+      name: "Tight Possession",
+      value: playerInfo?.tightPossession || 50,
+      max: 99,
+      category: "offensive",
+    },
+    {
+      name: "Lofted Pass",
+      value: playerInfo?.loftedPass || 50,
+      max: 99,
+      category: "offensive",
+    },
+    {
+      name: "Heading",
+      value: playerInfo?.heading || 50,
+      max: 99,
+      category: "offensive",
+    },
+    {
+      name: "Curl",
+      value: playerInfo?.curl || 50,
+      max: 99,
+      category: "offensive",
+    },
+    {
+      name: "Acceleration",
+      value: playerInfo?.acceleration || 50,
       max: 99,
       category: "physical",
+    },
+    {
+      name: "Jump",
+      value: playerInfo?.jump || 50,
+      max: 99,
+      category: "physical",
+    },
+    {
+      name: "Balance",
+      value: playerInfo?.balance || 50,
+      max: 99,
+      category: "physical",
+    },
+    {
+      name: "Defensive Awareness",
+      value: playerInfo?.defensiveAwareness || 50,
+      max: 99,
+      category: "defensive",
+    },
+    {
+      name: "Aggression",
+      value: playerInfo?.aggression || 50,
+      max: 99,
+      category: "defensive",
+    },
+    {
+      name: "GK Awareness",
+      value: playerInfo?.gkAwareness || 50,
+      max: 99,
+      category: "goalkeeper",
+    },
+    {
+      name: "GK Clearing",
+      value: playerInfo?.gkClearing || 50,
+      max: 99,
+      category: "goalkeeper",
+    },
+    {
+      name: "GK Reach",
+      value: playerInfo?.gkReach || 50,
+      max: 99,
+      category: "goalkeeper",
+    },
+    {
+      name: "GK Catching",
+      value: playerInfo?.gkCatching || 50,
+      max: 99,
+      category: "goalkeeper",
+    },
+    {
+      name: "GK Reflexes",
+      value: playerInfo?.gkReflexes || 50,
+      max: 99,
+      category: "goalkeeper",
+    },
+    {
+      name: "Weak Foot Usage",
+      value: playerInfo?.weakFootUsage || 50,
+      max: 4,
+      category: "special",
+    },
+    {
+      name: "Weak Foot Acc",
+      value: playerInfo?.weakFootAcc || 50,
+      max: 4,
+      category: "special",
+    },
+    {
+      name: "Form",
+      value: playerInfo?.form || 50,
+      max: 8,
+      category: "special",
+    },
+    {
+      name: "Injury Resistance",
+      value: playerInfo?.injuryResistance || 50,
+      max: 3,
+      category: "special",
     },
   ];
 
@@ -178,7 +315,11 @@ export default function PlayerDashboard() {
             </h1>
             <p className="text-muted-foreground">
               Welcome back,{" "}
-              {player?.firstName && player?.lastName
+              {playerInfo?.firstName && playerInfo?.lastName
+                ? `${playerInfo.firstName} ${playerInfo.lastName}`
+                : playerInfo?.firstName
+                ? playerInfo.firstName
+                : player?.firstName && player?.lastName
                 ? `${player.firstName} ${player.lastName}`
                 : player?.firstName || "Player"}
             </p>
@@ -187,15 +328,14 @@ export default function PlayerDashboard() {
             <Badge variant="outline" className="text-primary border-primary/50">
               {playerInfo?.position || "No Position"}
             </Badge>
-            <Badge variant="secondary">Level: {player?.level || 1}</Badge>
-            {player?.club && (
+            {player?.club || playerInfo?.club ? (
               <Badge
                 variant="secondary"
                 className="bg-accent text-accent-foreground"
               >
-                {player.club}
+                {player.club || playerInfo.club}
               </Badge>
-            )}
+            ) : null}
           </div>
         </div>
 
@@ -203,7 +343,7 @@ export default function PlayerDashboard() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <Card className="stat-card">
             <CardContent className="p-4">
-              <EnergyBar current={80} max={100} />
+              <EnergyBar current={player?.energy || 0} max={100} />
             </CardContent>
           </Card>
 
@@ -223,7 +363,7 @@ export default function PlayerDashboard() {
 
           <StatCard
             title="Matches Played"
-            value={player?.stats?.matches || 0}
+            value={player?.stats?.matchesPlayed || 0}
             icon={<Star className="h-4 w-4 text-yellow-500" />}
             trend="neutral"
           />
@@ -349,14 +489,16 @@ export default function PlayerDashboard() {
                 <div>
                   <p className="text-sm text-muted-foreground">Current Club</p>
                   <p className="font-semibold text-primary">
-                    {player?.club || "No club assigned"}
+                    {player?.club || playerInfo?.club || "No club assigned"}
                   </p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">
                     Matches Played
                   </p>
-                  <p className="font-semibold">{player.stats.matches}</p>
+                  <p className="font-semibold">
+                    {player?.stats?.matchesPlayed}
+                  </p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground mb-2">
@@ -430,7 +572,7 @@ export default function PlayerDashboard() {
         </div>
 
         {/* Quick Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        {/* <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <Button className="football-button">
             <TrendingUp className="h-4 w-4 mr-2" />
             Train Stats
@@ -456,7 +598,7 @@ export default function PlayerDashboard() {
             <User className="h-4 w-4 mr-2" />
             Edit Character
           </Button>
-        </div>
+        </div> */}
       </div>
     </div>
   );

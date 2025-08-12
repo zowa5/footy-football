@@ -20,6 +20,7 @@ import type {
 export const queryKeys = {
   auth: ["auth"],
   profile: ["auth", "profile"],
+  availableClubs: ["auth", "clubs"],
   playerDashboard: ["player", "dashboard"],
   playerMatches: ["player", "matches"],
   leaderboard: ["player", "leaderboard"],
@@ -92,7 +93,11 @@ export const useLogout = () => {
 export const usePlayerDashboard = () => {
   return useQuery({
     queryKey: queryKeys.playerDashboard,
-    queryFn: () => apiClient.getPlayerDashboard(),
+    queryFn: async () => {
+      const response = await apiClient.getPlayerDashboard();
+      console.log("🔍 Player Dashboard Response:", response);
+      return response.data; // Extract data from ApiResponse
+    },
     enabled: !!localStorage.getItem("authToken"),
   });
 };
@@ -100,7 +105,11 @@ export const usePlayerDashboard = () => {
 export const usePlayerMatches = () => {
   return useQuery({
     queryKey: queryKeys.playerMatches,
-    queryFn: () => apiClient.getPlayerMatches(),
+    queryFn: async () => {
+      const response = await apiClient.getPlayerMatches();
+      console.log("🔍 Player Matches Response:", response);
+      return response.data; // Extract data from ApiResponse
+    },
     enabled: !!localStorage.getItem("authToken"),
   });
 };
@@ -108,7 +117,12 @@ export const usePlayerMatches = () => {
 export const useLeaderboard = () => {
   return useQuery({
     queryKey: queryKeys.leaderboard,
-    queryFn: () => apiClient.getLeaderboard(),
+    queryFn: async () => {
+      const response = await apiClient.getLeaderboard();
+      console.log("🔍 Leaderboard Response:", response);
+      return response.data; // Extract data from ApiResponse
+    },
+    enabled: !!localStorage.getItem("authToken"),
     refetchInterval: 30000, // Refresh every 30 seconds
   });
 };
@@ -211,7 +225,10 @@ export const useSquad = () => {
 export const useManagerMatches = () => {
   return useQuery({
     queryKey: queryKeys.managerMatches,
-    queryFn: () => apiClient.getManagerMatches(),
+    queryFn: async () => {
+      const response = await apiClient.getManagerMatches();
+      return response.data; // Extract data from ApiResponse
+    },
     enabled: !!localStorage.getItem("authToken"),
   });
 };
@@ -379,6 +396,70 @@ export const useClubs = (params?: {
     queryKey: [...queryKeys.clubs, params],
     queryFn: () => apiClient.getClubs(params),
     enabled: !!localStorage.getItem("authToken"),
+  });
+};
+
+export const useAvailableClubs = () => {
+  return useQuery({
+    queryKey: queryKeys.availableClubs,
+    queryFn: () => apiClient.getAvailableClubs(),
+    enabled: true, // Always enabled since it's public endpoint
+  });
+};
+
+// Player Skills Hooks
+export const usePlayerSkills = () => {
+  return useQuery({
+    queryKey: ["player", "skills"],
+    queryFn: () => apiClient.getPlayerSkills(),
+    enabled: !!localStorage.getItem("authToken"),
+  });
+};
+
+export const useAcquireSkill = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (skillId: string) => apiClient.acquireSkill(skillId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["player", "skills"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.profile });
+      toast.success("Skill berhasil diperoleh!");
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Gagal memperoleh skill");
+    },
+  });
+};
+
+export const useToggleSkill = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (skillId: string) => apiClient.toggleSkill(skillId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["player", "skills"] });
+      toast.success("Status skill berhasil diubah!");
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Gagal mengubah status skill");
+    },
+  });
+};
+
+export const useUpgradeSkill = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (skillId: string) => apiClient.upgradeSkill(skillId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["player", "skills"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.profile });
+      toast.success("Skill berhasil ditingkatkan!");
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Gagal meningkatkan skill");
+    },
   });
 };
 

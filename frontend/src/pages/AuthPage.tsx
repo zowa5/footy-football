@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,9 +15,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useAuth } from "@/hooks/useAuth";
-import { useLogin, useRegister } from "@/hooks/api";
+import { useLogin, useRegister, useAvailableClubs } from "@/hooks/api";
 import type { RegisterData } from "@/types/api";
 import stadiumHero from "@/assets/stadium-hero.jpg";
+import { Slider } from "@/components/ui/slider";
 
 export default function AuthPage() {
   const [email, setEmail] = useState("");
@@ -29,9 +30,45 @@ export default function AuthPage() {
   const [clubName, setClubName] = useState("");
   const [error, setError] = useState("");
 
+  // State untuk semua skill
+  const [skills, setSkills] = useState(() => {
+    const base = {};
+    SKILL_ATTRS.forEach((attr) => {
+      base[attr.id] = SKILL_DEFAULT;
+    });
+    SPECIAL_SKILLS.forEach((attr) => {
+      base[attr.id] = attr.default;
+    });
+    return base;
+  });
+
+  // Tambahkan state untuk semua field playerInfo
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [age, setAge] = useState(18);
+  const [height, setHeight] = useState(175);
+  const [weight, setWeight] = useState(70);
+  const [nationality, setNationality] = useState("");
+  const [club, setClub] = useState("");
+  const [style, setStyle] = useState("balanced");
+
+  // Calculate used and remaining points
+  const usedPoints = useMemo(() => {
+    let used = 0;
+    for (const attr of SKILL_ATTRS) {
+      used += skills[attr.id] - SKILL_DEFAULT;
+    }
+    for (const attr of SPECIAL_SKILLS) {
+      used += (skills[attr.id] - attr.default) * SPECIAL_COST;
+    }
+    return used;
+  }, [skills]);
+  const remainingPoints = TOTAL_POINTS - usedPoints;
+
   const { login: authLogin, isAuthenticated, user, isLoading } = useAuth();
   const loginMutation = useLogin();
   const registerMutation = useRegister();
+  const { data: clubsData, isLoading: clubsLoading } = useAvailableClubs();
 
   // Check if user is authenticated and show loading or success message
   useEffect(() => {
@@ -111,6 +148,10 @@ export default function AuthPage() {
       setError("Passwords do not match");
       return;
     }
+    if (role === "player" && remainingPoints < 0) {
+      setError("Total skill points melebihi batas!");
+      return;
+    }
 
     try {
       const registerData: RegisterData = {
@@ -127,6 +168,20 @@ export default function AuthPage() {
           return;
         }
         registerData.position = position;
+
+        // Ensure all required fields are provided with defaults if empty
+        registerData.playerInfo = {
+          ...skills, // This includes all skill attributes
+          position,
+          firstName: firstName || "Player",
+          lastName: lastName || "User",
+          age: age || 18,
+          height: height || 175,
+          weight: weight || 70,
+          nationality: nationality || "Unknown",
+          club: club || "Free Agent",
+          style: style || "balanced",
+        } as RegisterData["playerInfo"]; // Type assertion using the interface
       }
 
       // Add club name for managers
@@ -373,13 +428,119 @@ export default function AuthPage() {
                           </SelectItem>
                           <SelectItem value="LW">Left Winger (LW)</SelectItem>
                           <SelectItem value="RW">Right Winger (RW)</SelectItem>
-                          <SelectItem value="CF">
-                            Centre Forward (CF)
-                          </SelectItem>
                           <SelectItem value="ST">Striker (ST)</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
+                  )}
+
+                  {/* Player Info Fields (only show for players) */}
+                  {role === "player" && (
+                    <>
+                      <div className="space-y-2">
+                        <Label htmlFor="firstName">First Name</Label>
+                        <Input
+                          id="firstName"
+                          value={firstName}
+                          onChange={(e) => setFirstName(e.target.value)}
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="lastName">Last Name</Label>
+                        <Input
+                          id="lastName"
+                          value={lastName}
+                          onChange={(e) => setLastName(e.target.value)}
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="age">Age</Label>
+                        <Input
+                          id="age"
+                          type="number"
+                          min={16}
+                          max={45}
+                          value={age}
+                          onChange={(e) => setAge(Number(e.target.value))}
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="height">Height (cm)</Label>
+                        <Input
+                          id="height"
+                          type="number"
+                          min={150}
+                          max={220}
+                          value={height}
+                          onChange={(e) => setHeight(Number(e.target.value))}
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="weight">Weight (kg)</Label>
+                        <Input
+                          id="weight"
+                          type="number"
+                          min={50}
+                          max={120}
+                          value={weight}
+                          onChange={(e) => setWeight(Number(e.target.value))}
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="nationality">Nationality</Label>
+                        <Input
+                          id="nationality"
+                          value={nationality}
+                          onChange={(e) => setNationality(e.target.value)}
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="club">Club</Label>
+                        <Select value={club} onValueChange={setClub}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select your club" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {clubsLoading ? (
+                              <SelectItem value="" disabled>
+                                Loading clubs...
+                              </SelectItem>
+                            ) : (
+                              clubsData?.data?.map((clubItem) => (
+                                <SelectItem
+                                  key={clubItem._id}
+                                  value={clubItem.clubName}
+                                >
+                                  {clubItem.clubName}
+                                </SelectItem>
+                              ))
+                            )}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="style">Playing Style</Label>
+                        <select
+                          id="style"
+                          value={style}
+                          onChange={(e) => setStyle(e.target.value)}
+                          required
+                          className="w-full px-2 py-1 border rounded bg-background"
+                        >
+                          <option value="aggressive">Aggressive</option>
+                          <option value="technical">Technical</option>
+                          <option value="balanced">Balanced</option>
+                          <option value="defensive">Defensive</option>
+                          <option value="attacking">Attacking</option>
+                        </select>
+                      </div>
+                    </>
                   )}
 
                   {/* Club Name Selection (only show for managers) */}
@@ -398,6 +559,146 @@ export default function AuthPage() {
                         Choose a unique name for your football club (minimum 3
                         characters)
                       </p>
+                    </div>
+                  )}
+
+                  {/* Player Skill Selection (only show for players) */}
+                  {role === "player" && (
+                    <div className="space-y-2">
+                      <Label>
+                        Pilih Skill Pemain (Sisa Poin: {remainingPoints})
+                      </Label>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {SKILL_ATTRS.map((attr) => (
+                          <div key={attr.id} className="space-y-1">
+                            <Label>{attr.name}</Label>
+                            <div className="flex items-center gap-2">
+                              <Slider
+                                min={SKILL_MIN}
+                                max={SKILL_MAX}
+                                value={[skills[attr.id]]}
+                                onValueChange={([value]) => {
+                                  const diff = value - skills[attr.id];
+                                  if (diff > 0 && remainingPoints - diff < 0)
+                                    return;
+                                  setSkills((prev) => ({
+                                    ...prev,
+                                    [attr.id]: value,
+                                  }));
+                                }}
+                                disabled={
+                                  remainingPoints <= 0 &&
+                                  skills[attr.id] === SKILL_MIN
+                                }
+                                className="flex-1"
+                              />
+                              <input
+                                type="number"
+                                min={SKILL_MIN}
+                                max={SKILL_MAX}
+                                value={skills[attr.id]}
+                                onChange={(e) => {
+                                  let value =
+                                    parseInt(e.target.value, 10) || SKILL_MIN;
+                                  if (value < SKILL_MIN) value = SKILL_MIN;
+                                  if (value > SKILL_MAX) value = SKILL_MAX;
+                                  const diff = value - skills[attr.id];
+                                  if (diff > 0 && remainingPoints - diff < 0)
+                                    return;
+                                  setSkills((prev) => ({
+                                    ...prev,
+                                    [attr.id]: value,
+                                  }));
+                                }}
+                                onKeyDown={(e) => {
+                                  if (
+                                    e.key !== "ArrowUp" &&
+                                    e.key !== "ArrowDown" &&
+                                    e.key !== "Tab"
+                                  ) {
+                                    e.preventDefault();
+                                  }
+                                }}
+                                onPaste={(e) => e.preventDefault()}
+                                className="w-16 px-2 py-1 border rounded text-center bg-background"
+                              />
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {skills[attr.id]}
+                            </div>
+                          </div>
+                        ))}
+                        {SPECIAL_SKILLS.map((attr) => (
+                          <div key={attr.id} className="space-y-1">
+                            <Label>{attr.name}</Label>
+                            <div className="flex items-center gap-2">
+                              <Slider
+                                min={attr.min}
+                                max={attr.max}
+                                value={[skills[attr.id]]}
+                                onValueChange={([value]) => {
+                                  const diff = value - skills[attr.id];
+                                  if (
+                                    diff > 0 &&
+                                    remainingPoints - diff * SPECIAL_COST < 0
+                                  )
+                                    return;
+                                  setSkills((prev) => ({
+                                    ...prev,
+                                    [attr.id]: value,
+                                  }));
+                                }}
+                                disabled={
+                                  remainingPoints <= 0 &&
+                                  skills[attr.id] === attr.min
+                                }
+                                className="flex-1"
+                              />
+                              <input
+                                type="number"
+                                min={attr.min}
+                                max={attr.max}
+                                value={skills[attr.id]}
+                                onChange={(e) => {
+                                  let value =
+                                    parseInt(e.target.value, 10) || attr.min;
+                                  if (value < attr.min) value = attr.min;
+                                  if (value > attr.max) value = attr.max;
+                                  const diff = value - skills[attr.id];
+                                  if (
+                                    diff > 0 &&
+                                    remainingPoints - diff * SPECIAL_COST < 0
+                                  )
+                                    return;
+                                  setSkills((prev) => ({
+                                    ...prev,
+                                    [attr.id]: value,
+                                  }));
+                                }}
+                                onKeyDown={(e) => {
+                                  if (
+                                    e.key !== "ArrowUp" &&
+                                    e.key !== "ArrowDown" &&
+                                    e.key !== "Tab"
+                                  ) {
+                                    e.preventDefault();
+                                  }
+                                }}
+                                onPaste={(e) => e.preventDefault()}
+                                className="w-16 px-2 py-1 border rounded text-center bg-background"
+                              />
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {skills[attr.id]}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      {remainingPoints < 0 && (
+                        <div className="text-xs text-destructive">
+                          Poin yang dibagikan melebihi batas!
+                        </div>
+                      )}
                     </div>
                   )}
 
@@ -461,3 +762,48 @@ export default function AuthPage() {
     </div>
   );
 }
+
+const SKILL_ATTRS = [
+  { id: "offensiveAwareness", name: "Offensive Awareness" },
+  { id: "dribbling", name: "Dribbling" },
+  { id: "lowPass", name: "Low Pass" },
+  { id: "finishing", name: "Finishing" },
+  { id: "placeKicking", name: "Place Kicking" },
+  { id: "speed", name: "Speed" },
+  { id: "kickingPower", name: "Kicking Power" },
+  { id: "physicalContact", name: "Physical Contact" },
+  { id: "stamina", name: "Stamina" },
+  { id: "ballWinning", name: "Ball Winning" },
+  { id: "ballControl", name: "Ball Control" },
+  { id: "tightPossession", name: "Tight Possession" },
+  { id: "loftedPass", name: "Lofted Pass" },
+  { id: "heading", name: "Heading" },
+  { id: "curl", name: "Curl" },
+  { id: "acceleration", name: "Acceleration" },
+  { id: "jump", name: "Jump" },
+  { id: "balance", name: "Balance" },
+  { id: "defensiveAwareness", name: "Defensive Awareness" },
+  { id: "aggression", name: "Aggression" },
+  { id: "gkAwareness", name: "GK Awareness" },
+  { id: "gkClearing", name: "GK Clearing" },
+  { id: "gkReach", name: "GK Reach" },
+  { id: "gkCatching", name: "GK Catching" },
+  { id: "gkReflexes", name: "GK Reflexes" },
+];
+const SPECIAL_SKILLS = [
+  { id: "weakFootUsage", name: "Weak Foot Usage", min: 1, max: 4, default: 1 },
+  { id: "weakFootAcc", name: "Weak Foot Acc", min: 1, max: 4, default: 1 },
+  {
+    id: "injuryResistance",
+    name: "Injury Resistance",
+    min: 1,
+    max: 3,
+    default: 1,
+  },
+  { id: "form", name: "Form", min: 4, max: 8, default: 4 },
+];
+const SKILL_MIN = 50;
+const SKILL_MAX = 99;
+const SKILL_DEFAULT = 50;
+const SPECIAL_COST = 5;
+const TOTAL_POINTS = 50;

@@ -25,7 +25,36 @@ export interface PlayerInfo {
   weight: number;
   nationality: string;
   club: string;
-  skills: PlayerSkills;
+  // Individual skill attributes
+  offensiveAwareness: number;
+  dribbling: number;
+  lowPass: number;
+  finishing: number;
+  placeKicking: number;
+  speed: number;
+  kickingPower: number;
+  physicalContact: number;
+  stamina: number;
+  ballWinning: number;
+  ballControl: number;
+  tightPossession: number;
+  loftedPass: number;
+  heading: number;
+  curl: number;
+  acceleration: number;
+  jump: number;
+  balance: number;
+  defensiveAwareness: number;
+  aggression: number;
+  gkAwareness: number;
+  gkClearing: number;
+  gkReach: number;
+  gkCatching: number;
+  gkReflexes: number;
+  weakFootUsage: number; // max 4
+  weakFootAcc: number; // max 4
+  form: number; // max 8
+  injuryResistance: number; // max 3
   style: string;
 }
 
@@ -241,6 +270,46 @@ export interface RegisterData {
   role: "player" | "manager";
   position?: string; // Optional for players only
   clubName?: string; // Optional for managers only
+  playerInfo?: {
+    firstName: string;
+    lastName: string;
+    position: string;
+    age: number;
+    height: number;
+    weight: number;
+    nationality: string;
+    club: string;
+    offensiveAwareness: number;
+    dribbling: number;
+    lowPass: number;
+    finishing: number;
+    placeKicking: number;
+    speed: number;
+    kickingPower: number;
+    physicalContact: number;
+    stamina: number;
+    ballWinning: number;
+    ballControl: number;
+    tightPossession: number;
+    loftedPass: number;
+    heading: number;
+    curl: number;
+    acceleration: number;
+    jump: number;
+    balance: number;
+    defensiveAwareness: number;
+    aggression: number;
+    gkAwareness: number;
+    gkClearing: number;
+    gkReach: number;
+    gkCatching: number;
+    gkReflexes: number;
+    weakFootUsage: number;
+    weakFootAcc: number;
+    form: number;
+    injuryResistance: number;
+    style: string;
+  };
 }
 
 export interface DashboardData {
@@ -251,10 +320,38 @@ export interface DashboardData {
   leaderboard?: User[];
 }
 
+export interface ManagerDashboardData {
+  manager: User;
+  stats: {
+    totalMatches: number;
+    winRate: string;
+    formationsOwned: number;
+  };
+  recentMatches: Match[];
+}
+
 export interface LeaderboardEntry {
-  user: User;
+  id: string;
+  name: string;
+  club: string;
+  position: string;
   rank: number;
-  points: number;
+  goals: number;
+  assists: number;
+  cleanSheets: number;
+  matchesWon: number;
+  matchesPlayed: number;
+  yellowCards: number;
+  redCards: number;
+}
+
+export interface LeaderboardData {
+  goals: LeaderboardEntry[];
+  assists: LeaderboardEntry[];
+  cleanSheets: LeaderboardEntry[];
+  matchesWon: LeaderboardEntry[];
+  yellowCards: LeaderboardEntry[];
+  redCards: LeaderboardEntry[];
 }
 
 export interface SystemLog {
@@ -331,4 +428,31 @@ export interface Analytics {
     matches: number;
     transactions: number;
   }[];
+}
+
+export interface PlayerSkill {
+  _id: string;
+  playerId: string;
+  skillId: string;
+  skillName: string;
+  skillType: "playerSkill" | "style";
+  isActive: boolean;
+  acquiredAt: string;
+  description: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SkillTemplate {
+  _id: string;
+  skillId: string;
+  skillName: string;
+  skillType: "playerSkill" | "style";
+  description: string;
+  longDescription: string;
+  cost: number;
+  currency: "skillPoints" | "stylePoints";
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
 }

@@ -3,7 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Slider } from "@/components/ui/slider";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   ShoppingBag,
   Coins,
@@ -13,146 +14,54 @@ import {
   Lock,
   ChevronLeft,
   ChevronRight,
+  Info,
+  Construction,
 } from "lucide-react";
-import { PLAYER_SKILLS, COM_STYLES } from "@/constants/gameConstants";
-
-// Mock player data
-const mockPlayerData = {
-  currencies: { gp: 2500, fc: 150 },
-  ownedSkills: ["longRangeShot", "oneTouch"],
-  ownedComStyles: ["tikiTaka", "counterAttack"],
-  level: 25,
-};
-
-// Slidable Stat Attributes
-const statUpgrades = [
-  "Offensive Awareness",
-  "Ball Control",
-  "Dribbling",
-  "Tight Possession",
-  "Low Pass",
-  "Lofted Pass",
-  "Finishing",
-  "Heading",
-  "Place Kicking",
-  "Curl",
-  "Speed",
-  "Acceleration",
-  "Kicking Power",
-  "Jump",
-  "Physical Contact",
-  "Balance",
-  "Stamina",
-  "Defensive Awareness",
-  "Ball Winning",
-  "Aggression",
-  "GK Awareness",
-  "GK Catching",
-  "GK Clearing",
-  "GK Reflexes",
-  "GK Reach",
-  "Weak Foot Usage",
-  "Weak Foot Acc.",
-  "Form",
-  "Injury Resistance",
-].map((attr) => ({
-  id: attr.toLowerCase().replace(/\s+/g, "_"),
-  name: attr,
-  description: `${attr} (1-99)`,
-  cost: 400,
-  currency: "gp",
-  type: "stat",
-}));
-
-// Special premium items
-const premiumItems = [
-  {
-    id: "energy_drink",
-    name: "Energy Drink",
-    description: "Restore 25 energy instantly",
-    cost: 50,
-    currency: "fc",
-    type: "consumable",
-  },
-  {
-    id: "super_energy",
-    name: "Super Energy Boost",
-    description: "Restore 50 energy instantly",
-    cost: 80,
-    currency: "fc",
-    type: "consumable",
-  },
-  {
-    id: "skill_reset",
-    name: "Skill Reset Token",
-    description: "Reset and choose new skills",
-    cost: 200,
-    currency: "fc",
-    type: "special",
-  },
-  {
-    id: "style_reset",
-    name: "Style Reset Token",
-    description: "Reset and choose new COM styles",
-    cost: 150,
-    currency: "fc",
-    type: "special",
-  },
-  {
-    id: "appearance_change",
-    name: "Appearance Editor",
-    description: "Modify player appearance",
-    cost: 100,
-    currency: "fc",
-    type: "special",
-  },
-  {
-    id: "position_change",
-    name: "Position Change Card",
-    description: "Change player position",
-    cost: 300,
-    currency: "fc",
-    type: "special",
-  },
-];
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { usePlayerSkills, useAcquireSkill } from "@/hooks/api";
+import { useAuth } from "@/hooks/useAuth";
+import type { SkillTemplate, PlayerSkill } from "@/types/api";
 
 export default function PlayerStore() {
-  const [playerData, setPlayerData] = useState(mockPlayerData);
   const [selectedTab, setSelectedTab] = useState("skills");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 9;
 
-  const canAfford = (cost: number, currency: "gp" | "fc") => {
-    return playerData.currencies[currency] >= cost;
+  const { user } = useAuth();
+  const { data: skillsData, isLoading } = usePlayerSkills();
+  const acquireSkillMutation = useAcquireSkill();
+
+  const playerSkills = skillsData?.data?.playerSkills || [];
+  const skillTemplates = skillsData?.data?.skillTemplates || [];
+  const skillPoints = skillsData?.data?.skillPoints || 0;
+  const stylePoints = skillsData?.data?.stylePoints || 0;
+
+  const canAfford = (cost: number, currency: "skillPoints" | "stylePoints") => {
+    if (currency === "skillPoints") return skillPoints >= cost;
+    if (currency === "stylePoints") return stylePoints >= cost;
+    return false;
   };
 
-  const isOwned = (itemId: string, type: "skill" | "style") => {
-    if (type === "skill") return playerData.ownedSkills.includes(itemId);
-    return playerData.ownedComStyles.includes(itemId);
+  const isOwned = (skillId: string) => {
+    return playerSkills.some((ps) => ps.skillId === skillId);
   };
 
-  interface StoreItem {
-    id: string;
-    name: string;
-    description: string;
-    cost: number;
-    currency: "gp" | "fc";
-    type?: "stat" | "skill" | "style" | "consumable" | "special";
-  }
+  const handlePurchase = (skillId: string) => {
+    acquireSkillMutation.mutate(skillId);
+  };
 
-  const handlePurchase = (item: StoreItem) => {
-    const cost = item.cost;
-    const currency = item.currency;
-
-    if (!canAfford(cost, currency)) return;
-
-    setPlayerData((prev) => ({
-      ...prev,
-      currencies: {
-        ...prev.currencies,
-        [currency]: prev.currencies[currency] - cost,
-      },
-    }));
+  // Get available skills that are not owned yet
+  const getAvailableSkills = (skillType: "playerSkill" | "style") => {
+    return skillTemplates
+      .filter(
+        (skill) => skill.skillType === skillType && !isOwned(skill.skillId)
+      )
+      .sort((a, b) => a.cost - b.cost); // Sort by cost
   };
 
   // Pagination helpers
@@ -217,125 +126,66 @@ export default function PlayerStore() {
     );
   };
 
-  const StoreItem = ({
-    item,
-    type = "general",
-  }: {
-    item: StoreItem;
-    type?: string;
-  }) => {
-    const owned =
-      type === "skill"
-        ? isOwned(item.id, "skill")
-        : type === "style"
-        ? isOwned(item.id, "style")
-        : false;
-    const affordable = canAfford(item.cost, item.currency);
-    const [sliderValue, setSliderValue] = useState(40);
-
-    const handleSliderChange = (value: number[]) => {
-      setSliderValue(value[0]);
-      // You can add additional logic here to handle the stat upgrade
-    };
-
-    if (item.type === "stat") {
-      return (
-        <Card className="stat-card transition-all duration-300">
-          <CardContent className="p-4">
-            <div className="flex items-start justify-between mb-3">
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-2">
-                  <h3 className="font-semibold">{item.name}</h3>
-                </div>
-                <div className="space-y-4">
-                  <Slider
-                    defaultValue={[40]}
-                    min={40}
-                    max={99}
-                    step={1}
-                    value={[sliderValue]}
-                    onValueChange={handleSliderChange}
-                    className="w-full"
-                  />
-                  <div className="flex justify-between items-center">
-                    <p className="text-sm text-muted-foreground">
-                      Current: {sliderValue}
-                    </p>
-                    <div className="flex items-center gap-2">
-                      <Star className="h-4 w-4 text-primary" />
-                      <span className="font-bold">
-                        {item.cost * (sliderValue - 40)}
-                      </span>
-                      <span className="text-sm text-muted-foreground">GP</span>
-                    </div>
-                  </div>
-                  <Button
-                    size="sm"
-                    disabled={!affordable}
-                    onClick={() =>
-                      handlePurchase({
-                        ...item,
-                        cost: item.cost * (sliderValue - 40),
-                      })
-                    }
-                    className={affordable ? "football-button w-full" : "w-full"}
-                  >
-                    {!affordable ? <Lock className="h-4 w-4 mr-2" /> : null}
-                    Upgrade
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      );
-    }
+  const SkillStoreCard = ({ skill }: { skill: SkillTemplate }) => {
+    const owned = isOwned(skill.skillId);
+    const affordable = canAfford(skill.cost, skill.currency);
 
     return (
       <Card
         className={`stat-card transition-all duration-300 hover:scale-[1.02] ${
-          owned ? "border-accent/50 bg-accent/5" : ""
+          owned ? "border-green-500/50 bg-green-500/5" : ""
         }`}
       >
         <CardContent className="p-4">
           <div className="flex items-start justify-between mb-3">
             <div className="flex-1">
               <div className="flex items-center gap-2 mb-2">
-                <h3 className="font-semibold">{item.name}</h3>
+                <h3 className="font-semibold">{skill.skillName}</h3>
                 {owned && (
                   <Badge
                     variant="outline"
-                    className="text-accent border-accent/50"
+                    className="text-green-600 border-green-500/50"
                   >
                     Owned
                   </Badge>
                 )}
               </div>
               <p className="text-sm text-muted-foreground mb-3">
-                {item.description}
+                {skill.description}
               </p>
             </div>
+
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger>
+                  <Info className="h-4 w-4 text-muted-foreground" />
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p className="text-sm max-w-xs">{skill.longDescription}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
 
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              {item.currency === "fc" ? (
-                <Coins className="h-4 w-4 text-yellow-500" />
-              ) : (
+              {skill.currency === "stylePoints" ? (
                 <Star className="h-4 w-4 text-primary" />
+              ) : (
+                <Zap className="h-4 w-4 text-primary" />
               )}
-              <span className="font-bold text-lg">{item.cost}</span>
+              <span className="font-bold text-lg">{skill.cost}</span>
               <span className="text-sm text-muted-foreground">
-                {item.currency.toUpperCase()}
+                {skill.currency === "skillPoints" ? "SP" : "STP"}
               </span>
             </div>
 
             <Button
               size="sm"
-              disabled={owned || !affordable}
-              onClick={() => handlePurchase(item)}
+              disabled={owned || !affordable || acquireSkillMutation.isPending}
+              onClick={() => handlePurchase(skill.skillId)}
               className={
-                owned ? "bg-accent/20" : affordable ? "football-button" : ""
+                owned ? "bg-green-500/20" : affordable ? "football-button" : ""
               }
               variant={owned ? "outline" : affordable ? "default" : "outline"}
             >
@@ -343,6 +193,8 @@ export default function PlayerStore() {
                 "Owned"
               ) : !affordable ? (
                 <Lock className="h-4 w-4" />
+              ) : acquireSkillMutation.isPending ? (
+                "Buying..."
               ) : (
                 "Buy"
               )}
@@ -353,6 +205,62 @@ export default function PlayerStore() {
     );
   };
 
+  const EmptyStoreSection = ({ type }: { type: "skills" | "styles" }) => (
+    <Alert>
+      <Info className="h-4 w-4" />
+      <AlertDescription>
+        All available {type} have been purchased! Check back later for new{" "}
+        {type}.
+      </AlertDescription>
+    </Alert>
+  );
+
+  const PremiumSection = () => (
+    <Alert>
+      <Construction className="h-4 w-4" />
+      <AlertDescription className="flex items-center justify-between">
+        <div>
+          <p className="font-medium mb-1">Premium Features Coming Soon!</p>
+          <p className="text-sm text-muted-foreground">
+            Special items, boosts, and exclusive content will be available here
+            in future updates.
+          </p>
+        </div>
+      </AlertDescription>
+    </Alert>
+  );
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-stadium-gradient p-6">
+        <div className="max-w-7xl mx-auto space-y-6">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <h1 className="text-3xl font-bold font-football">Player Store</h1>
+              <p className="text-muted-foreground">Loading store data...</p>
+            </div>
+            <div className="flex items-center gap-4">
+              <Skeleton className="h-16 w-24" />
+              <Skeleton className="h-16 w-24" />
+            </div>
+          </div>
+          <Card className="stat-card">
+            <CardHeader>
+              <Skeleton className="h-6 w-32" />
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {[1, 2, 3, 4, 5, 6].map((i) => (
+                  <Skeleton key={i} className="h-32 w-full" />
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-stadium-gradient p-6">
       <div className="max-w-7xl mx-auto space-y-6">
@@ -360,7 +268,7 @@ export default function PlayerStore() {
           <div>
             <h1 className="text-3xl font-bold font-football">Player Store</h1>
             <p className="text-muted-foreground">
-              Upgrade your skills and boost your performance
+              Purchase new skills and playing styles
             </p>
           </div>
 
@@ -368,11 +276,9 @@ export default function PlayerStore() {
             <Card className="stat-card">
               <CardContent className="p-3">
                 <div className="flex items-center gap-2">
-                  <Star className="h-5 w-5 text-primary" />
-                  <span className="font-bold text-lg">
-                    {playerData.currencies.gp}
-                  </span>
-                  <span className="text-sm text-muted-foreground">GP</span>
+                  <Zap className="h-5 w-5 text-primary" />
+                  <span className="font-bold text-lg">{skillPoints}</span>
+                  <span className="text-sm text-muted-foreground">SP</span>
                 </div>
               </CardContent>
             </Card>
@@ -380,11 +286,9 @@ export default function PlayerStore() {
             <Card className="stat-card">
               <CardContent className="p-3">
                 <div className="flex items-center gap-2">
-                  <Coins className="h-5 w-5 text-yellow-500" />
-                  <span className="font-bold text-lg">
-                    {playerData.currencies.fc}
-                  </span>
-                  <span className="text-sm text-muted-foreground">FC</span>
+                  <Star className="h-5 w-5 text-primary" />
+                  <span className="font-bold text-lg">{stylePoints}</span>
+                  <span className="text-sm text-muted-foreground">STP</span>
                 </div>
               </CardContent>
             </Card>
@@ -404,7 +308,7 @@ export default function PlayerStore() {
               onValueChange={handleTabChange}
               className="w-full"
             >
-              <TabsList className="grid w-full grid-cols-4 mb-6">
+              <TabsList className="grid w-full grid-cols-3 mb-6">
                 <TabsTrigger value="skills" className="flex items-center gap-2">
                   <Zap className="h-4 w-4" />
                   Skills
@@ -412,10 +316,6 @@ export default function PlayerStore() {
                 <TabsTrigger value="styles" className="flex items-center gap-2">
                   <Star className="h-4 w-4" />
                   COM Styles
-                </TabsTrigger>
-                <TabsTrigger value="stats" className="flex items-center gap-2">
-                  <TrendingUp className="h-4 w-4" />
-                  Stat Upgrades
                 </TabsTrigger>
                 <TabsTrigger
                   value="premium"
@@ -427,47 +327,47 @@ export default function PlayerStore() {
               </TabsList>
 
               <TabsContent value="skills" className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {getPaginatedItems(PLAYER_SKILLS).map((skill) => (
-                    <StoreItem
-                      key={skill.id}
-                      item={{ ...skill, currency: "gp" }}
-                      type="skill"
-                    />
-                  ))}
-                </div>
-                <PaginationControls items={PLAYER_SKILLS} />
+                {(() => {
+                  const availableSkills = getAvailableSkills("playerSkill");
+                  if (availableSkills.length === 0) {
+                    return <EmptyStoreSection type="skills" />;
+                  }
+                  const paginatedSkills = getPaginatedItems(availableSkills);
+                  return (
+                    <>
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {paginatedSkills.map((skill) => (
+                          <SkillStoreCard key={skill._id} skill={skill} />
+                        ))}
+                      </div>
+                      <PaginationControls items={availableSkills} />
+                    </>
+                  );
+                })()}
               </TabsContent>
 
               <TabsContent value="styles" className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {getPaginatedItems(COM_STYLES).map((style) => (
-                    <StoreItem
-                      key={style.id}
-                      item={{ ...style, currency: "gp" }}
-                      type="style"
-                    />
-                  ))}
-                </div>
-                <PaginationControls items={COM_STYLES} />
-              </TabsContent>
-
-              <TabsContent value="stats" className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {getPaginatedItems(statUpgrades).map((upgrade) => (
-                    <StoreItem key={upgrade.id} item={upgrade} />
-                  ))}
-                </div>
-                <PaginationControls items={statUpgrades} />
+                {(() => {
+                  const availableStyles = getAvailableSkills("style");
+                  if (availableStyles.length === 0) {
+                    return <EmptyStoreSection type="styles" />;
+                  }
+                  const paginatedStyles = getPaginatedItems(availableStyles);
+                  return (
+                    <>
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {paginatedStyles.map((skill) => (
+                          <SkillStoreCard key={skill._id} skill={skill} />
+                        ))}
+                      </div>
+                      <PaginationControls items={availableStyles} />
+                    </>
+                  );
+                })()}
               </TabsContent>
 
               <TabsContent value="premium" className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {getPaginatedItems(premiumItems).map((item) => (
-                    <StoreItem key={item.id} item={item} />
-                  ))}
-                </div>
-                <PaginationControls items={premiumItems} />
+                <PremiumSection />
               </TabsContent>
             </Tabs>
           </CardContent>
@@ -477,41 +377,41 @@ export default function PlayerStore() {
           <Card className="stat-card">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-primary">
-                <Star className="h-5 w-5" />
-                General Points (GP)
+                <Zap className="h-5 w-5" />
+                Skill Points (SP)
               </CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground mb-2">
-                Earned through matches, training, and achievements. Used for
-                skills, styles, and stat upgrades.
+                Earned through matches and achievements. Used to purchase player
+                skills.
               </p>
               <div className="text-xs text-muted-foreground">
-                • Win matches: +150 GP
+                • Win matches: +10 SP
                 <br />
-                • Draw matches: +75 GP
-                <br />• Goals/Assists: +25 GP each
+                • Draw matches: +5 SP
+                <br />• Goals/Assists: +2 SP each
               </div>
             </CardContent>
           </Card>
 
           <Card className="stat-card">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-yellow-500">
-                <Coins className="h-5 w-5" />
-                Football Coins (FC)
+              <CardTitle className="flex items-center gap-2 text-primary">
+                <Star className="h-5 w-5" />
+                Style Points (STP)
               </CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground mb-2">
-                Premium currency for special items, boosts, and exclusive
-                content. Can be purchased or earned.
+                Earned through special achievements and tournaments. Used to
+                purchase playing styles.
               </p>
               <div className="text-xs text-muted-foreground">
-                • Weekly login bonus
+                • Tournament wins: +15 STP
                 <br />
-                • Special achievements
-                <br />• Tournament rewards
+                • Clean sheets: +3 STP
+                <br />• Hat-tricks: +5 STP
               </div>
             </CardContent>
           </Card>

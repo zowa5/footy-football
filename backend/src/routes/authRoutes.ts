@@ -4,11 +4,19 @@ import {
   login,
   getProfile,
   updateLastLogin,
+  getAvailableClubs,
 } from "../controllers/authController";
 import { authenticate } from "../middleware/auth";
 import { maintenanceCheck } from "../middleware/maintenance";
 
 const router = Router();
+
+/**
+ * @route   GET /api/auth/clubs
+ * @desc    Get available clubs for player signup
+ * @access  Public
+ */
+router.get("/clubs", getAvailableClubs);
 
 /**
  * @route   POST /api/auth/register

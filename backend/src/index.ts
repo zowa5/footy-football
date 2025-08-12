@@ -7,6 +7,7 @@ import dotenv from "dotenv";
 import { connectDB } from "./utils/database";
 import { errorHandler } from "./middleware/errorHandler";
 import { seedFormations, seedStoreItems } from "./utils/seeders";
+// Note: seedSkills will be run separately for now
 
 // Import routes
 import authRoutes from "./routes/authRoutes";
@@ -30,7 +31,7 @@ app.use(helmet());
 // Rate limiting
 const limiter = rateLimit({
   windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || "900000"), // 15 minutes
-  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || "100"), // limit each IP to 100 requests per windowMs
+  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || "500"), // limit each IP to 500 requests per windowMs (increased for development)
   message: "Too many requests from this IP, please try again later.",
 });
 app.use("/api/", limiter);
@@ -65,7 +66,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/formations", formationRoutes);
 app.use("/api/store", storeRoutes);
 app.use("/api/player", playerRoutes);
-app.use("/api/manager", managerRoutes);
+app.use("/api/managers", managerRoutes);
 app.use("/api/matches", matchRoutes);
 app.use("/api/tournaments", tournamentRoutes);
 app.use("/api/admin", adminRoutes);
@@ -91,6 +92,7 @@ const startServer = async () => {
     // Seed default data
     await seedFormations();
     await seedStoreItems();
+    // Note: seedSkills will be run separately
 
     app.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);

@@ -1,343 +1,583 @@
 import { Request, Response } from "express";
 import { User } from "../models/User";
+import { PlayerSkill } from "../models/PlayerSkill";
+import { SkillTemplate } from "../models/SkillTemplate";
 import { Match } from "../models/Match";
-import { Transaction, TransactionType } from "../models/Transaction";
 import { asyncHandler, createError } from "../middleware/errorHandler";
 import { AuthenticatedRequest } from "../middleware/auth";
-import { UserRole } from "../types/common";
 
+/**
+ * @desc    Get player dashboard data
+ * @route   GET /api/player/dashboard
+ * @access  Private
+ */
 export const getPlayerDashboard = asyncHandler(
   async (req: AuthenticatedRequest, res: Response) => {
-    const userId = req.user!.id;
+    const playerId = req.user?.id;
 
-    const user = await User.findById(userId);
-    if (!user || user.role !== UserRole.PLAYER) {
+    if (!playerId) {
+      throw createError("Player ID not found", 400);
+    }
+
+    // Get player with all necessary data
+    const player = await User.findById(playerId)
+      .select(
+        "username email firstName lastName playerInfo stats level coins energy"
+      )
+      .lean();
+
+    if (!player) {
       throw createError("Player not found", 404);
     }
 
-    // Get recent matches for the player
+    // Get recent matches (last 5 completed matches)
     const recentMatches = await Match.find({
-      $or: [{ "homeTeam.userId": userId }, { "awayTeam.userId": userId }],
+      $or: [{ "homeTeam.userId": playerId }, { "awayTeam.userId": playerId }],
+      status: "completed",
     })
       .sort({ createdAt: -1 })
       .limit(5)
       .populate("homeTeam.userId", "username")
-      .populate("awayTeam.userId", "username");
+      .populate("awayTeam.userId", "username")
+      .lean();
 
-    // Get upcoming matches
+    // Get upcoming matches (next 5 scheduled matches)
     const upcomingMatches = await Match.find({
-      $or: [{ "homeTeam.userId": userId }, { "awayTeam.userId": userId }],
-      status: { $in: ["scheduled", "in_progress"] },
+      $or: [{ "homeTeam.userId": playerId }, { "awayTeam.userId": playerId }],
+      status: "scheduled",
     })
-      .sort({ scheduledDate: 1 })
-      .limit(3)
+      .sort({ scheduledAt: 1 })
+      .limit(5)
       .populate("homeTeam.userId", "username")
-      .populate("awayTeam.userId", "username");
+      .populate("awayTeam.userId", "username")
+      .lean();
+
+    // Get player skills
+    const playerSkills = await PlayerSkill.find({ playerId }).lean();
+
+    // Prepare dashboard data
+    const dashboardData = {
+      user: {
+        _id: player._id,
+        username: player.username,
+        email: player.email,
+        role: player.role,
+        firstName: player.playerInfo?.firstName || player.firstName || "Player",
+        lastName: player.playerInfo?.lastName || player.lastName || "User",
+        // Player attributes: gunakan data asli dari database
+        playerInfo: player.playerInfo,
+        club: player.playerInfo?.club || "Free Agent",
+        coins: player.coins || 0,
+        energy: player.energy || 100,
+        stats: player.stats || {
+          matchesPlayed: 0,
+          matchesWon: 0,
+          goals: 0,
+          assists: 0,
+          cleanSheets: 0,
+          yellowCards: 0,
+          redCards: 0,
+          tournamentsWon: 0,
+          skillPoints: 0,
+        },
+        isActive: player.isActive,
+        createdAt: player.createdAt,
+        updatedAt: player.updatedAt,
+        playerSkills, // <-- tambahkan di sini
+      },
+      recentMatches: recentMatches.map((match) => ({
+        _id: match._id,
+        homeTeam: match.homeTeam,
+        awayTeam: match.awayTeam,
+        homeScore: match.result?.homeScore,
+        awayScore: match.result?.awayScore,
+        status: match.status,
+        scheduledDate: match.scheduledAt,
+        completedAt: match.completedAt,
+      })),
+      upcomingMatches: upcomingMatches.map((match) => ({
+        _id: match._id,
+        homeTeam: match.homeTeam,
+        awayTeam: match.awayTeam,
+        scheduledDate: match.scheduledAt,
+        status: match.status,
+      })),
+      stats: player.stats || {
+        matchesPlayed: 0,
+        matchesWon: 0,
+        goals: 0,
+        assists: 0,
+        cleanSheets: 0,
+        yellowCards: 0,
+        redCards: 0,
+        tournamentsWon: 0,
+        skillPoints: 0,
+      },
+    };
+
+    res.json({
+      success: true,
+      data: dashboardData,
+    });
+  }
+);
+
+/**
+ * @desc    Get player skills
+ * @route   GET /api/player/skills
+ * @access  Private
+ */
+export const getPlayerSkills = asyncHandler(
+  async (req: AuthenticatedRequest, res: Response) => {
+    const playerId = req.user?.id;
+
+    if (!playerId) {
+      throw createError("Player ID not found", 400);
+    }
+
+    // Get ALL player's skills (both active and inactive)
+    const playerSkills = await PlayerSkill.find({
+      playerId,
+    }).sort({ acquiredAt: -1 });
+
+    // Get available skill templates
+    const skillTemplates = await SkillTemplate.find({
+      isActive: true,
+    }).sort({ skillType: 1, category: 1 });
+
+    // Get player info for skill points
+    const player = await User.findById(playerId).select(
+      "stats.skillPoints playerInfo"
+    );
 
     res.json({
       success: true,
       data: {
-        user,
-        recentMatches,
-        upcomingMatches,
-        stats: user.stats,
+        playerSkills,
+        skillTemplates,
+        skillPoints: player?.stats?.skillPoints || 0,
+        stylePoints: 0, // TODO: Add style points to player stats
       },
     });
   }
 );
 
-export const getPlayerStats = asyncHandler(
+/**
+ * @desc    Purchase/acquire a skill
+ * @route   POST /api/player/skills/acquire
+ * @access  Private
+ */
+export const acquireSkill = asyncHandler(
   async (req: AuthenticatedRequest, res: Response) => {
-    const userId = req.user!.id;
+    const playerId = req.user?.id;
+    const { skillId } = req.body;
 
-    const user = await User.findById(userId);
-    if (!user || user.role !== UserRole.PLAYER) {
+    if (!playerId) {
+      throw createError("Player ID not found", 400);
+    }
+
+    if (!skillId) {
+      throw createError("Skill ID is required", 400);
+    }
+
+    // Get skill template
+    const skillTemplate = await SkillTemplate.findOne({
+      skillId,
+      isActive: true,
+    });
+
+    if (!skillTemplate) {
+      throw createError("Skill not found", 404);
+    }
+
+    // Check if player already has this skill
+    const existingSkill = await PlayerSkill.findOne({
+      playerId,
+      skillId,
+    });
+
+    if (existingSkill) {
+      throw createError("Player already has this skill", 400);
+    }
+
+    // Get player info
+    const player = await User.findById(playerId);
+    if (!player) {
       throw createError("Player not found", 404);
     }
+
+    // Check requirements
+    // (Dihapus, tidak ada requirements.level di schema baru)
+
+    // Check currency and deduct cost
+    if (skillTemplate.currency === "skillPoints") {
+      if ((player.stats?.skillPoints || 0) < skillTemplate.cost) {
+        throw createError("Insufficient skill points", 400);
+      }
+
+      player.stats.skillPoints =
+        (player.stats.skillPoints || 0) - skillTemplate.cost;
+    } else if (skillTemplate.currency === "coins") {
+      if (player.coins < skillTemplate.cost) {
+        throw createError("Insufficient coins", 400);
+      }
+
+      player.coins -= skillTemplate.cost;
+    }
+
+    // Create player skill
+    const playerSkill = new PlayerSkill({
+      playerId,
+      skillId: skillTemplate.skillId,
+      skillName: skillTemplate.skillName,
+      skillType: skillTemplate.skillType,
+      description: skillTemplate.description,
+      isActive: true,
+      acquiredAt: new Date(),
+    });
+
+    await playerSkill.save();
+    await player.save();
 
     res.json({
       success: true,
       data: {
-        player: user,
+        message: "Skill acquired successfully",
+        playerSkill,
+        remainingSkillPoints: player.stats?.skillPoints || 0,
+        remainingCoins: player.coins,
       },
     });
   }
 );
 
-export const updatePlayerStats = asyncHandler(
+/**
+ * @desc    Toggle skill activation
+ * @route   PUT /api/player/skills/:skillId/toggle
+ * @access  Private
+ */
+export const toggleSkill = asyncHandler(
   async (req: AuthenticatedRequest, res: Response) => {
-    const userId = req.user!.id;
-    const { stats } = req.body;
+    const playerId = req.user?.id;
+    const { skillId } = req.params;
 
-    const user = await User.findById(userId);
-    if (!user || user.role !== UserRole.PLAYER) {
+    if (!playerId) {
+      throw createError("Player ID not found", 400);
+    }
+
+    const playerSkill = await PlayerSkill.findOne({
+      playerId,
+      skillId,
+    });
+
+    if (!playerSkill) {
+      throw createError("Skill not found", 404);
+    }
+
+    playerSkill.isActive = !playerSkill.isActive;
+    await playerSkill.save();
+
+    res.json({
+      success: true,
+      data: {
+        message: `Skill ${
+          playerSkill.isActive ? "activated" : "deactivated"
+        } successfully`,
+        playerSkill,
+      },
+    });
+  }
+);
+
+/**
+ * @desc    Upgrade skill level
+ * @route   PUT /api/player/skills/:skillId/upgrade
+ * @access  Private
+ */
+export const upgradeSkill = asyncHandler(
+  async (req: AuthenticatedRequest, res: Response) => {
+    const playerId = req.user?.id;
+    const { skillId } = req.params;
+
+    if (!playerId) {
+      throw createError("Player ID not found", 400);
+    }
+
+    const playerSkill = await PlayerSkill.findOne({
+      playerId,
+      skillId,
+    });
+
+    if (!playerSkill) {
+      throw createError("Skill not found", 404);
+    }
+
+    if (playerSkill.level >= playerSkill.maxLevel) {
+      throw createError("Skill is already at maximum level", 400);
+    }
+
+    // Get player for currency check
+    const player = await User.findById(playerId);
+    if (!player) {
       throw createError("Player not found", 404);
     }
 
-    const userData = user as any;
-    if (!userData.playerData) {
-      throw createError("Player data not found", 404);
+    // Calculate upgrade cost (simple formula: base cost * current level)
+    const skillTemplate = await SkillTemplate.findOne({ skillId });
+    const upgradeCost = skillTemplate
+      ? skillTemplate.cost * playerSkill.level
+      : 100;
+
+    // Check if player can afford upgrade
+    if (skillTemplate?.currency === "skillPoints") {
+      if ((player.stats?.skillPoints || 0) < upgradeCost) {
+        throw createError("Insufficient skill points for upgrade", 400);
+      }
+      player.stats.skillPoints = (player.stats.skillPoints || 0) - upgradeCost;
+    } else if (skillTemplate?.currency === "coins") {
+      if (player.coins < upgradeCost) {
+        throw createError("Insufficient coins for upgrade", 400);
+      }
+      player.coins -= upgradeCost;
     }
 
-    // Update stats
-    if (stats) {
-      Object.keys(stats).forEach((stat) => {
-        if (userData.playerData.stats[stat] !== undefined) {
-          userData.playerData.stats[stat] = Math.min(
-            100,
-            Math.max(1, stats[stat])
-          );
-        }
+    // Upgrade skill
+    playerSkill.level += 1;
+
+    // Enhance effects based on level
+    playerSkill.effects = playerSkill.effects.map((effect) => ({
+      ...effect,
+      value: effect.value ? effect.value + effect.value * 0.1 : effect.value,
+      percentage: effect.percentage
+        ? effect.percentage + effect.percentage * 0.05
+        : effect.percentage,
+    }));
+
+    await playerSkill.save();
+    await player.save();
+
+    res.json({
+      success: true,
+      data: {
+        message: "Skill upgraded successfully",
+        playerSkill,
+        remainingSkillPoints: player.stats?.skillPoints || 0,
+        remainingCoins: player.coins,
+      },
+    });
+  }
+);
+
+/**
+ * @desc    Get player matches
+ * @route   GET /api/player/matches
+ * @access  Private
+ */
+export const getPlayerMatches = asyncHandler(
+  async (req: AuthenticatedRequest, res: Response) => {
+    const playerId = req.user?.id;
+
+    if (!playerId) {
+      throw createError("Player ID not found", 400);
+    }
+
+    // Get player with club info
+    const player = await User.findById(playerId).select("playerInfo.club");
+    if (!player || !player.playerInfo?.club) {
+      throw createError("Player club not found", 404);
+    }
+
+    const playerClub = player.playerInfo.club;
+
+    // Get recent matches (completed) for player's club
+    const recentMatches = await Match.find({
+      $or: [
+        { "homeTeam.clubName": playerClub },
+        { "awayTeam.clubName": playerClub },
+      ],
+      status: "completed",
+    })
+      .sort({ completedAt: -1 })
+      .limit(10)
+      .lean();
+
+    // Get upcoming matches (scheduled) for player's club
+    const upcomingMatches = await Match.find({
+      $or: [
+        { "homeTeam.clubName": playerClub },
+        { "awayTeam.clubName": playerClub },
+      ],
+      status: "scheduled",
+    })
+      .sort({ scheduledAt: 1 })
+      .limit(10)
+      .lean();
+
+    // Format matches for frontend
+    const formatMatch = (match: any, isUpcoming = false) => {
+      const isHome = match.homeTeam.clubName === playerClub;
+      const opponent = isHome
+        ? match.awayTeam.clubName
+        : match.homeTeam.clubName;
+
+      const result: any = {
+        id: match._id,
+        opponent: opponent,
+        date: isUpcoming ? match.scheduledAt : match.completedAt,
+        competition: match.competition,
+        venue: match.venue,
+        awayGame: !isHome,
+      };
+
+      if (!isUpcoming) {
+        // Add result data for completed matches
+        const homeScore = match.result?.homeScore || 0;
+        const awayScore = match.result?.awayScore || 0;
+
+        result.score = `${homeScore}-${awayScore}`;
+        result.result =
+          match.result?.winner === "home"
+            ? isHome
+              ? "WIN"
+              : "LOSS"
+            : match.result?.winner === "away"
+            ? isHome
+              ? "LOSS"
+              : "WIN"
+            : "DRAW";
+
+        // Calculate GP (simplified - more GP for wins)
+        result.gp =
+          result.result === "WIN" ? 150 : result.result === "DRAW" ? 75 : 50;
+
+        // Add match details
+        result.details = {
+          possession: Math.floor(Math.random() * 30) + 40, // 40-70%
+          shots: Math.floor(Math.random() * 15) + 5, // 5-20 shots
+          shotsOnTarget: Math.floor(Math.random() * 8) + 2, // 2-10 on target
+          passes: Math.floor(Math.random() * 200) + 300, // 300-500 passes
+          tackles: Math.floor(Math.random() * 15) + 10, // 10-25 tackles
+          goals: match.events?.filter((e: any) => e.type === "goal") || [],
+        };
+      } else {
+        // Add time for upcoming matches
+        result.time = new Date(match.scheduledAt).toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+      }
+
+      return result;
+    };
+
+    const formattedRecentMatches = recentMatches.map((match) =>
+      formatMatch(match, false)
+    );
+    const formattedUpcomingMatches = upcomingMatches.map((match) =>
+      formatMatch(match, true)
+    );
+
+    res.json({
+      success: true,
+      data: {
+        recentMatches: formattedRecentMatches,
+        upcomingMatches: formattedUpcomingMatches,
+        playerClub: playerClub,
+      },
+    });
+  }
+);
+
+/**
+ * @desc    Get leaderboard data
+ * @route   GET /api/player/leaderboard
+ * @access  Private
+ */
+export const getLeaderboard = asyncHandler(
+  async (req: AuthenticatedRequest, res: Response) => {
+    // Get all players with their stats
+    const players = await User.find({
+      role: "player",
+      "playerInfo.firstName": { $exists: true, $ne: null },
+      "playerInfo.lastName": { $exists: true, $ne: null },
+      "playerInfo.club": { $exists: true, $ne: null },
+      stats: { $exists: true, $ne: null },
+    })
+      .select("playerInfo stats")
+      .lean();
+
+    if (!players || players.length === 0) {
+      return res.json({
+        success: true,
+        data: [],
       });
     }
 
-    await user.save();
-
-    res.json({
-      success: true,
-      message: "Player stats updated successfully",
-      data: {
-        player: user,
-      },
-    });
-  }
-);
-
-export const getPlayerLeaderboard = asyncHandler(
-  async (req: Request, res: Response) => {
-    const { page = 1, limit = 20, sortBy = "wins" } = req.query;
-
-    const skip = (Number(page) - 1) * Number(limit);
-
-    let sortField = "playerData.wins";
-    switch (sortBy) {
-      case "level":
-        sortField = "playerData.level";
-        break;
-      case "experience":
-        sortField = "playerData.experience";
-        break;
-      case "matches":
-        sortField = "playerData.matchesPlayed";
-        break;
-      default:
-        sortField = "playerData.wins";
-    }
-
-    const players = await User.find({
-      role: UserRole.PLAYER,
-      isActive: true,
-    })
-      .select(
-        "username playerData.level playerData.wins playerData.losses playerData.draws playerData.matchesPlayed playerData.experience"
-      )
-      .sort({ [sortField]: -1 })
-      .skip(skip)
-      .limit(Number(limit));
-
-    const total = await User.countDocuments({
-      role: UserRole.PLAYER,
-      isActive: true,
-    });
-
-    // Calculate win rate and add rank
-    const leaderboard = players.map((player, index) => {
-      const userData = player as any;
-      const wins = userData.playerData?.wins || 0;
-      const losses = userData.playerData?.losses || 0;
-      const draws = userData.playerData?.draws || 0;
-      const totalMatches = wins + losses + draws;
-      const winRate =
-        totalMatches > 0 ? ((wins / totalMatches) * 100).toFixed(1) : "0.0";
+    // Format leaderboard data with different categories
+    const formattedPlayers = players.map((player) => {
+      const playerInfo = player.playerInfo;
+      const stats = player.stats || {};
 
       return {
-        rank: skip + index + 1,
-        username: player.username,
-        level: userData.playerData?.level || 1,
-        wins,
-        losses,
-        draws,
-        matchesPlayed: totalMatches,
-        winRate: `${winRate}%`,
-        experience: userData.playerData?.experience || 0,
+        id: player._id,
+        name: `${playerInfo?.firstName || "Unknown"} ${
+          playerInfo?.lastName || "Player"
+        }`,
+        club: playerInfo?.club || "Free Agent",
+        position: playerInfo?.position || "Unknown",
+        // Goals
+        goals: stats.goals || 0,
+        // Assists
+        assists: stats.assists || 0,
+        // Clean sheets (for goalkeepers)
+        cleanSheets: stats.cleanSheets || 0,
+        // Matches won
+        matchesWon: stats.matchesWon || 0,
+        // Total matches played
+        matchesPlayed: stats.matchesPlayed || 0,
+        // Cards
+        yellowCards: stats.yellowCards || 0,
+        redCards: stats.redCards || 0,
       };
     });
 
-    const totalPages = Math.ceil(total / Number(limit));
+    // Create different leaderboards
+    const leaderboards = {
+      goals: [...formattedPlayers]
+        .sort((a, b) => b.goals - a.goals)
+        .slice(0, 10)
+        .map((player, index) => ({ ...player, rank: index + 1 })),
+
+      assists: [...formattedPlayers]
+        .sort((a, b) => b.assists - a.assists)
+        .slice(0, 10)
+        .map((player, index) => ({ ...player, rank: index + 1 })),
+
+      cleanSheets: [...formattedPlayers]
+        .filter((player) => player.position === "GK") // Only goalkeepers
+        .sort((a, b) => b.cleanSheets - a.cleanSheets)
+        .slice(0, 10)
+        .map((player, index) => ({ ...player, rank: index + 1 })),
+
+      matchesWon: [...formattedPlayers]
+        .sort((a, b) => b.matchesWon - a.matchesWon)
+        .slice(0, 10)
+        .map((player, index) => ({ ...player, rank: index + 1 })),
+
+      yellowCards: [...formattedPlayers]
+        .sort((a, b) => b.yellowCards - a.yellowCards)
+        .slice(0, 10)
+        .map((player, index) => ({ ...player, rank: index + 1 })),
+
+      redCards: [...formattedPlayers]
+        .sort((a, b) => b.redCards - a.redCards)
+        .slice(0, 10)
+        .map((player, index) => ({ ...player, rank: index + 1 })),
+    };
 
     res.json({
       success: true,
-      data: {
-        leaderboard,
-        pagination: {
-          current: Number(page),
-          totalPages,
-          total,
-          limit: Number(limit),
-          hasNext: Number(page) < totalPages,
-          hasPrev: Number(page) > 1,
-        },
-      },
-    });
-  }
-);
-
-export const updatePlayerEnergy = asyncHandler(
-  async (req: AuthenticatedRequest, res: Response) => {
-    const userId = req.user!.id;
-    const { energy } = req.body;
-
-    if (energy < 0 || energy > 100) {
-      throw createError("Energy must be between 0 and 100", 400);
-    }
-
-    const user = await User.findById(userId);
-    if (!user || user.role !== UserRole.PLAYER) {
-      throw createError("Player not found", 404);
-    }
-
-    const userData = user as any;
-    if (!userData.playerData) {
-      throw createError("Player data not found", 404);
-    }
-
-    userData.playerData.energy = energy;
-    await user.save();
-
-    res.json({
-      success: true,
-      message: "Player energy updated successfully",
-      data: {
-        energy: userData.playerData.energy,
-      },
-    });
-  }
-);
-
-export const getPlayerTransactions = asyncHandler(
-  async (req: AuthenticatedRequest, res: Response) => {
-    const userId = req.user!.id;
-    const { page = 1, limit = 20, type } = req.query;
-
-    const skip = (Number(page) - 1) * Number(limit);
-
-    const filter: any = { userId };
-    if (type) {
-      filter.type = type;
-    }
-
-    const [transactions, total] = await Promise.all([
-      Transaction.find(filter)
-        .populate("metadata.storeItemId", "name icon")
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(Number(limit)),
-      Transaction.countDocuments(filter),
-    ]);
-
-    const totalPages = Math.ceil(total / Number(limit));
-
-    res.json({
-      success: true,
-      data: {
-        transactions,
-        pagination: {
-          current: Number(page),
-          totalPages,
-          total,
-          limit: Number(limit),
-          hasNext: Number(page) < totalPages,
-          hasPrev: Number(page) > 1,
-        },
-      },
-    });
-  }
-);
-
-export const addPlayerExperience = asyncHandler(
-  async (req: AuthenticatedRequest, res: Response) => {
-    const userId = req.user!.id;
-    const { experience, reason = "Manual adjustment" } = req.body;
-
-    if (!experience || experience < 0) {
-      throw createError("Experience must be positive", 400);
-    }
-
-    const user = await User.findById(userId);
-    if (!user || user.role !== UserRole.PLAYER) {
-      throw createError("Player not found", 404);
-    }
-
-    const userData = user as any;
-    if (!userData.playerData) {
-      throw createError("Player data not found", 404);
-    }
-
-    const oldLevel = userData.playerData.level;
-    userData.playerData.experience += experience;
-
-    // Level up calculation (100 XP per level)
-    const newLevel = Math.floor(userData.playerData.experience / 100) + 1;
-    const leveledUp = newLevel > oldLevel;
-
-    if (leveledUp) {
-      userData.playerData.level = newLevel;
-
-      // Level up rewards
-      const coinReward = newLevel * 50;
-      userData.playerData.coins += coinReward;
-
-      // Create transaction for level reward
-      const transaction = new Transaction({
-        userId,
-        type: TransactionType.LEVEL_REWARD,
-        amount: coinReward,
-        description: `Level ${newLevel} reward`,
-        metadata: { level: newLevel },
-      });
-      await transaction.save();
-    }
-
-    await user.save();
-
-    res.json({
-      success: true,
-      message: leveledUp
-        ? `Level up! You are now level ${newLevel}`
-        : "Experience added successfully",
-      data: {
-        experience: userData.playerData.experience,
-        level: userData.playerData.level,
-        leveledUp,
-        coins: userData.playerData.coins,
-      },
-    });
-  }
-);
-
-export const resetPlayerEnergy = asyncHandler(
-  async (req: AuthenticatedRequest, res: Response) => {
-    const userId = req.user!.id;
-
-    const user = await User.findById(userId);
-    if (!user || user.role !== UserRole.PLAYER) {
-      throw createError("Player not found", 404);
-    }
-
-    const userData = user as any;
-    if (!userData.playerData) {
-      throw createError("Player data not found", 404);
-    }
-
-    userData.playerData.energy = 100;
-    await user.save();
-
-    res.json({
-      success: true,
-      message: "Player energy restored to full",
-      data: {
-        energy: 100,
-      },
+      data: leaderboards,
     });
   }
 );

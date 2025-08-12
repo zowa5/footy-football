@@ -20,6 +20,7 @@ import ManagerDashboard from "./pages/manager/Dashboard";
 import ManagerStore from "./pages/manager/Store";
 import SquadManagement from "./pages/manager/SquadManagement";
 import FormationBuilder from "./pages/manager/FormationBuilder";
+import ManagerMatches from "./pages/manager/Matches";
 
 // SuperAdmin Pages
 import SuperAdminDashboard from "./pages/superadmin/Dashboard";
@@ -136,7 +137,7 @@ const AppContent = () => {
           <Route path="/manager/squad" element={<SquadManagement />} />
           <Route path="/manager/formation" element={<FormationBuilder />} />
           <Route path="/manager/store" element={<ManagerStore />} />
-          <Route path="/manager/matches" element={<PlayerMatches />} />
+          <Route path="/manager/matches" element={<ManagerMatches />} />
           <Route path="/manager/leaderboard" element={<Leaderboard />} />
           <Route path="*" element={<Navigate to="/manager" replace />} />
         </Route>

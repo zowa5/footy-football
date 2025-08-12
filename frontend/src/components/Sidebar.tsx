@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/hooks/useAuth";
 
 const playerNavItems = [
   { title: "Dashboard", url: "/player", icon: BarChart3 },
@@ -33,7 +34,7 @@ const managerNavItems = [
   { title: "Formation", url: "/manager/formation", icon: Target },
   { title: "Matches", url: "/manager/matches", icon: Calendar },
   { title: "Leaderboard", url: "/manager/leaderboard", icon: Trophy },
-  { title: "Store", url: "/manager/store", icon: ShoppingBag },
+  { title: "AI Players", url: "/manager/store", icon: ShoppingBag },
 ];
 
 interface SidebarProps {
@@ -44,7 +45,13 @@ interface SidebarProps {
 export function Sidebar({ userRole, onLogout }: SidebarProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const location = useLocation();
-  const navItems = userRole === "player" ? playerNavItems : managerNavItems;
+  const { user } = useAuth();
+  let navItems = userRole === "player" ? playerNavItems : managerNavItems;
+
+  // Hide Character link if player already has character
+  if (userRole === "player" && user && user.playerInfo) {
+    navItems = navItems.filter((item) => item.url !== "/player/character");
+  }
 
   // Check if mobile on mount and resize
   useEffect(() => {

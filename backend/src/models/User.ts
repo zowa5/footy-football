@@ -22,7 +22,36 @@ export interface IPlayerInfo {
   weight: number;
   nationality: string;
   club: string;
-  skills: IPlayerSkills;
+  // --- Skills ---
+  offensiveAwareness: number;
+  dribbling: number;
+  lowPass: number;
+  finishing: number;
+  placeKicking: number;
+  speed: number;
+  kickingPower: number;
+  physicalContact: number;
+  stamina: number;
+  ballWinning: number;
+  ballControl: number;
+  tightPossession: number;
+  loftedPass: number;
+  heading: number;
+  curl: number;
+  acceleration: number;
+  jump: number;
+  balance: number;
+  defensiveAwareness: number;
+  aggression: number;
+  gkAwareness: number;
+  gkClearing: number;
+  gkReach: number;
+  gkCatching: number;
+  gkReflexes: number;
+  weakFootUsage: number; // max 4
+  weakFootAcc: number; // max 4
+  form: number; // max 8
+  injuryResistance: number; // max 3
   style: string;
 }
 
@@ -34,6 +63,7 @@ export interface IManagerInfo {
   reputation: number;
   experience: number;
   level: number;
+  formations?: string[]; // Array of formation IDs
 }
 
 // User stats interface
@@ -52,9 +82,9 @@ export interface IUserStats {
 
 // Base user interface
 export interface IUser extends Document {
-  username: string;
-  email: string;
-  password: string;
+  username?: string; // Optional untuk AI players
+  email?: string; // Optional untuk AI players
+  password?: string; // Optional untuk AI players
   role: UserRole;
   profilePicture?: string;
   bio?: string;
@@ -64,6 +94,8 @@ export interface IUser extends Document {
   energy: number;
   stats: IUserStats;
   isActive: boolean;
+  isAI?: boolean; // Flag untuk menandai AI players
+  ownedBy?: string; // Manager ID yang memiliki player ini (untuk AI players)
   lastLogin?: Date;
   createdAt: Date;
   updatedAt: Date;
@@ -119,7 +151,35 @@ const playerInfoSchema = new Schema<IPlayerInfo>({
   weight: { type: Number, required: true, min: 50, max: 120 },
   nationality: { type: String, required: true },
   club: { type: String, required: true },
-  skills: { type: playerSkillsSchema, required: true },
+  offensiveAwareness: { type: Number, required: true, min: 1, max: 99 },
+  dribbling: { type: Number, required: true, min: 1, max: 99 },
+  lowPass: { type: Number, required: true, min: 1, max: 99 },
+  finishing: { type: Number, required: true, min: 1, max: 99 },
+  placeKicking: { type: Number, required: true, min: 1, max: 99 },
+  speed: { type: Number, required: true, min: 1, max: 99 },
+  kickingPower: { type: Number, required: true, min: 1, max: 99 },
+  physicalContact: { type: Number, required: true, min: 1, max: 99 },
+  stamina: { type: Number, required: true, min: 1, max: 99 },
+  ballWinning: { type: Number, required: true, min: 1, max: 99 },
+  ballControl: { type: Number, required: true, min: 1, max: 99 },
+  tightPossession: { type: Number, required: true, min: 1, max: 99 },
+  loftedPass: { type: Number, required: true, min: 1, max: 99 },
+  heading: { type: Number, required: true, min: 1, max: 99 },
+  curl: { type: Number, required: true, min: 1, max: 99 },
+  acceleration: { type: Number, required: true, min: 1, max: 99 },
+  jump: { type: Number, required: true, min: 1, max: 99 },
+  balance: { type: Number, required: true, min: 1, max: 99 },
+  defensiveAwareness: { type: Number, required: true, min: 1, max: 99 },
+  aggression: { type: Number, required: true, min: 1, max: 99 },
+  gkAwareness: { type: Number, required: true, min: 1, max: 99 },
+  gkClearing: { type: Number, required: true, min: 1, max: 99 },
+  gkReach: { type: Number, required: true, min: 1, max: 99 },
+  gkCatching: { type: Number, required: true, min: 1, max: 99 },
+  gkReflexes: { type: Number, required: true, min: 1, max: 99 },
+  weakFootUsage: { type: Number, required: true, min: 1, max: 4 },
+  weakFootAcc: { type: Number, required: true, min: 1, max: 4 },
+  form: { type: Number, required: true, min: 1, max: 8 },
+  injuryResistance: { type: Number, required: true, min: 1, max: 3 },
   style: {
     type: String,
     required: true,
@@ -135,6 +195,7 @@ const managerInfoSchema = new Schema<IManagerInfo>({
   reputation: { type: Number, required: true, min: 0, max: 100 },
   experience: { type: Number, required: true, min: 0 },
   level: { type: Number, required: true, min: 1, max: 10 },
+  formations: [{ type: Schema.Types.ObjectId, ref: "Formation" }], // Array of formation references
 });
 
 // User stats schema
@@ -156,22 +217,30 @@ const userSchema = new Schema<IUser>(
   {
     username: {
       type: String,
-      required: true,
+      required: function () {
+        return !this.isAI; // Required jika bukan AI
+      },
       unique: true,
+      sparse: true, // Allow multiple null/undefined values
       trim: true,
       minlength: 3,
       maxlength: 30,
     },
     email: {
       type: String,
-      required: true,
+      required: function () {
+        return !this.isAI; // Required jika bukan AI
+      },
       unique: true,
+      sparse: true, // Allow multiple null/undefined values
       lowercase: true,
       trim: true,
     },
     password: {
       type: String,
-      required: true,
+      required: function () {
+        return !this.isAI; // Required jika bukan AI
+      },
       minlength: 6,
       select: false, // Don't include password in queries by default
     },
@@ -220,6 +289,15 @@ const userSchema = new Schema<IUser>(
       type: Boolean,
       default: true,
     },
+    isAI: {
+      type: Boolean,
+      default: false,
+    },
+    ownedBy: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      required: false,
+    },
     lastLogin: {
       type: Date,
       default: null,
@@ -247,6 +325,8 @@ userSchema.pre("save", async function (next) {
 userSchema.methods.comparePassword = async function (
   candidatePassword: string
 ): Promise<boolean> {
+  // AI players tidak punya password
+  if (this.isAI || !this.password) return false;
   return bcrypt.compare(candidatePassword, this.password);
 };
 

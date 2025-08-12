@@ -12,12 +12,15 @@ import type {
   Match,
   Tournament,
   LeaderboardEntry,
+  LeaderboardData,
   ApiResponse,
   SystemLog,
   Analytics,
   DashboardStats,
   PlayerInfo,
   ManagerInfo,
+  PlayerSkill,
+  SkillTemplate,
 } from "../types/api";
 
 const API_BASE_URL =
@@ -98,6 +101,86 @@ class ApiClient {
     return this.request<ApiResponse<User>>("/auth/profile");
   }
 
+  async getAvailableClubs(): Promise<ApiResponse<Club[]>> {
+    return this.request<ApiResponse<Club[]>>("/auth/clubs");
+  }
+
+  // Player Skills endpoints
+  async getPlayerSkills(): Promise<
+    ApiResponse<{
+      playerSkills: PlayerSkill[];
+      skillTemplates: SkillTemplate[];
+      skillPoints: number;
+      stylePoints: number;
+    }>
+  > {
+    return this.request<
+      ApiResponse<{
+        playerSkills: PlayerSkill[];
+        skillTemplates: SkillTemplate[];
+        skillPoints: number;
+        stylePoints: number;
+      }>
+    >("/player/skills");
+  }
+
+  async acquireSkill(skillId: string): Promise<
+    ApiResponse<{
+      message: string;
+      playerSkill: PlayerSkill;
+      remainingSkillPoints: number;
+      remainingCoins: number;
+    }>
+  > {
+    return this.request<
+      ApiResponse<{
+        message: string;
+        playerSkill: PlayerSkill;
+        remainingSkillPoints: number;
+        remainingCoins: number;
+      }>
+    >("/player/skills/acquire", {
+      method: "POST",
+      body: JSON.stringify({ skillId }),
+    });
+  }
+
+  async toggleSkill(skillId: string): Promise<
+    ApiResponse<{
+      message: string;
+      playerSkill: PlayerSkill;
+    }>
+  > {
+    return this.request<
+      ApiResponse<{
+        message: string;
+        playerSkill: PlayerSkill;
+      }>
+    >(`/player/skills/${skillId}/toggle`, {
+      method: "PUT",
+    });
+  }
+
+  async upgradeSkill(skillId: string): Promise<
+    ApiResponse<{
+      message: string;
+      playerSkill: PlayerSkill;
+      remainingSkillPoints: number;
+      remainingCoins: number;
+    }>
+  > {
+    return this.request<
+      ApiResponse<{
+        message: string;
+        playerSkill: PlayerSkill;
+        remainingSkillPoints: number;
+        remainingCoins: number;
+      }>
+    >(`/player/skills/${skillId}/upgrade`, {
+      method: "PUT",
+    });
+  }
+
   // Player endpoints
   async getPlayerDashboard(): Promise<ApiResponse<DashboardData>> {
     return this.request<ApiResponse<DashboardData>>("/player/dashboard");
@@ -117,26 +200,43 @@ class ApiClient {
   }
 
   // Manager endpoints
-  async getManagerDashboard(): Promise<ApiResponse<DashboardData>> {
-    return this.request<ApiResponse<DashboardData>>("/manager/dashboard");
+  async getManagerDashboard(): Promise<ApiResponse<ManagerDashboardData>> {
+    return this.request<ApiResponse<ManagerDashboardData>>(
+      "/managers/dashboard"
+    );
   }
 
   async getSquad(): Promise<ApiResponse<User[]>> {
-    return this.request<ApiResponse<User[]>>("/manager/squad");
+    return this.request<ApiResponse<User[]>>("/managers/squad");
   }
 
   async updateSquad(squadData: {
-    players: string[];
+    args: string[];
     formation: string;
   }): Promise<ApiResponse<any>> {
-    return this.request<ApiResponse<any>>("/manager/squad", {
+    return this.request<ApiResponse<any>>("/managers/squad", {
       method: "PUT",
       body: JSON.stringify(squadData),
     });
   }
 
   async getManagerMatches(): Promise<ApiResponse<Match[]>> {
-    return this.request<ApiResponse<Match[]>>("/manager/matches");
+    return this.request<ApiResponse<Match[]>>("/managers/matches");
+  }
+
+  async getManagerFormations(): Promise<ApiResponse<any>> {
+    return this.request<ApiResponse<any>>("/managers/formations");
+  }
+
+  async getAIPlayers(): Promise<ApiResponse<any[]>> {
+    return this.request<ApiResponse<any[]>>("/managers/ai-players");
+  }
+
+  async buyAIPlayer(playerId: string): Promise<ApiResponse<any>> {
+    return this.request<ApiResponse<any>>("/managers/ai-players/buy", {
+      method: "POST",
+      body: JSON.stringify({ playerId }),
+    });
   }
 
   // Formation endpoints
@@ -148,6 +248,17 @@ class ApiClient {
     formationData: Omit<Formation, "_id" | "createdAt" | "updatedAt">
   ): Promise<ApiResponse<Formation>> {
     return this.request<ApiResponse<Formation>>("/formations", {
+      method: "POST",
+      body: JSON.stringify(formationData),
+    });
+  }
+
+  async saveCustomFormation(formationData: {
+    name: string;
+    positions: any[];
+    formationType?: string;
+  }): Promise<ApiResponse<any>> {
+    return this.request<ApiResponse<any>>("/managers/formations/save", {
       method: "POST",
       body: JSON.stringify(formationData),
     });
@@ -204,8 +315,8 @@ class ApiClient {
   }
 
   // Leaderboard endpoint
-  async getLeaderboard(): Promise<ApiResponse<LeaderboardEntry[]>> {
-    return this.request<ApiResponse<LeaderboardEntry[]>>("/leaderboard");
+  async getLeaderboard(): Promise<ApiResponse<LeaderboardData>> {
+    return this.request<ApiResponse<LeaderboardData>>("/player/leaderboard");
   }
 
   // Admin endpoints (for super admin)

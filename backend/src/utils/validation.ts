@@ -17,6 +17,50 @@ export const registerSchema = z.object({
     .min(6, "Password must be at least 6 characters long")
     .max(100, "Password cannot exceed 100 characters"),
   role: z.enum([UserRole.PLAYER, UserRole.MANAGER]),
+  position: z.string().optional(), // For players
+  clubName: z.string().optional(), // For managers
+  playerInfo: z
+    .object({
+      firstName: z.string().optional(),
+      lastName: z.string().optional(),
+      position: z.string().optional(),
+      age: z.number().optional(),
+      height: z.number().optional(),
+      weight: z.number().optional(),
+      nationality: z.string().optional(),
+      club: z.string().optional(),
+      offensiveAwareness: z.number().optional(),
+      dribbling: z.number().optional(),
+      lowPass: z.number().optional(),
+      finishing: z.number().optional(),
+      placeKicking: z.number().optional(),
+      speed: z.number().optional(),
+      kickingPower: z.number().optional(),
+      physicalContact: z.number().optional(),
+      stamina: z.number().optional(),
+      ballWinning: z.number().optional(),
+      ballControl: z.number().optional(),
+      tightPossession: z.number().optional(),
+      loftedPass: z.number().optional(),
+      heading: z.number().optional(),
+      curl: z.number().optional(),
+      acceleration: z.number().optional(),
+      jump: z.number().optional(),
+      balance: z.number().optional(),
+      defensiveAwareness: z.number().optional(),
+      aggression: z.number().optional(),
+      gkAwareness: z.number().optional(),
+      gkClearing: z.number().optional(),
+      gkReach: z.number().optional(),
+      gkCatching: z.number().optional(),
+      gkReflexes: z.number().optional(),
+      weakFootUsage: z.number().optional(),
+      weakFootAcc: z.number().optional(),
+      form: z.number().optional(),
+      injuryResistance: z.number().optional(),
+      style: z.string().optional(),
+    })
+    .optional(),
 });
 
 export const loginSchema = z.object({
