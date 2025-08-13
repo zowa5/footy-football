@@ -85,6 +85,8 @@ export interface IUser extends Document {
   username?: string; // Optional untuk AI players
   email?: string; // Optional untuk AI players
   password?: string; // Optional untuk AI players
+  firstName?: string; // Can be set directly or via playerInfo
+  lastName?: string; // Can be set directly or via playerInfo
   role: UserRole;
   profilePicture?: string;
   bio?: string;
@@ -226,6 +228,14 @@ const userSchema = new Schema<IUser>(
       minlength: 3,
       maxlength: 30,
     },
+    firstName: {
+      type: String,
+      trim: true,
+    },
+    lastName: {
+      type: String,
+      trim: true,
+    },
     email: {
       type: String,
       required: function () {
@@ -314,7 +324,9 @@ userSchema.pre("save", async function (next) {
 
   try {
     const salt = await bcrypt.genSalt(10);
-    this.password = await bcrypt.hash(this.password, salt);
+    if (this.password) {
+      this.password = await bcrypt.hash(this.password, salt);
+    }
     next();
   } catch (error) {
     next(error as Error);

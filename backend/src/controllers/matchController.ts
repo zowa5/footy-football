@@ -23,7 +23,7 @@ export const createMatch = asyncHandler(
       throw createError("Opponent not found or inactive", 404);
     }
 
-    if (opponent._id.toString() === userId) {
+    if ((opponent._id as any).toString() === userId) {
       throw createError("Cannot create match against yourself", 400);
     }
 

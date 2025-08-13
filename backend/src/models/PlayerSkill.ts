@@ -10,6 +10,13 @@ export interface IPlayerSkill extends Document {
   description: string;
   createdAt: Date;
   updatedAt: Date;
+  level: number;
+  maxLevel: number;
+  effects: Array<{
+    type: string;
+    value: number;
+    percentage: number;
+  }>;
 }
 
 const playerSkillSchema = new Schema<IPlayerSkill>(

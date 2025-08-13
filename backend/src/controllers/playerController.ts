@@ -210,14 +210,15 @@ export const acquireSkill = asyncHandler(
     // (Dihapus, tidak ada requirements.level di schema baru)
 
     // Check currency and deduct cost
-    if (skillTemplate.currency === "skillPoints") {
+    const currency = skillTemplate.currency as "skillPoints" | "coins" | "stylePoints";
+    if (currency === "skillPoints") {
       if ((player.stats?.skillPoints || 0) < skillTemplate.cost) {
         throw createError("Insufficient skill points", 400);
       }
 
       player.stats.skillPoints =
         (player.stats.skillPoints || 0) - skillTemplate.cost;
-    } else if (skillTemplate.currency === "coins") {
+    } else if (currency === "coins") {
       if (player.coins < skillTemplate.cost) {
         throw createError("Insufficient coins", 400);
       }
@@ -334,7 +335,7 @@ export const upgradeSkill = asyncHandler(
         throw createError("Insufficient skill points for upgrade", 400);
       }
       player.stats.skillPoints = (player.stats.skillPoints || 0) - upgradeCost;
-    } else if (skillTemplate?.currency === "coins") {
+    } else if (skillTemplate?.currency === "stylePoints") {
       if (player.coins < upgradeCost) {
         throw createError("Insufficient coins for upgrade", 400);
       }

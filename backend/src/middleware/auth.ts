@@ -12,6 +12,7 @@ export interface AuthenticatedRequest extends Request {
     email: string;
   };
 }
+export type AuthRequest = AuthenticatedRequest;
 
 export const authenticate = async (
   req: AuthenticatedRequest,
@@ -38,9 +39,9 @@ export const authenticate = async (
 
     req.user = {
       id: (user._id as any).toString(),
-      username: user.username,
+      username: user.username || "",
       role: user.role,
-      email: user.email,
+      email: user.email || "",
     };
 
     next();
@@ -82,9 +83,9 @@ export const optionalAuth = async (
       if (user && user.isActive) {
         req.user = {
           id: (user._id as any).toString(),
-          username: user.username,
+          username: user.username || "",
           role: user.role,
-          email: user.email,
+          email: user.email || "",
         };
       }
     }

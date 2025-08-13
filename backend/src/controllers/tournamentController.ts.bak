@@ -25,7 +25,7 @@ export const createTournament = async (req: AuthRequest, res: Response) => {
     } = req.body;
 
     // Check if user is manager or admin
-    if (!req.user || ![UserRole.MANAGER, UserRole.SUPER_ADMIN].includes(req.user.role)) {
+    if (!req.user || !["manager", "admin"].includes(req.user.role)) {
       return res
         .status(403)
         .json({ message: "Access denied. Manager or Admin role required." });
@@ -35,7 +35,7 @@ export const createTournament = async (req: AuthRequest, res: Response) => {
     const tournament = new Tournament({
       name,
       description,
-      creator: new mongoose.Types.ObjectId(req.user.id),
+      creator: req.user.id,
       maxParticipants,
       entryFee,
       prizePool,
@@ -143,7 +143,7 @@ export const joinTournament = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ message: "Tournament not found" });
     }
 
-    if (tournament.status !== TournamentStatus.UPCOMING) {
+    if (tournament.status !== "upcoming") {
       return res
         .status(400)
         .json({ message: "Tournament is not accepting participants" });
@@ -154,14 +154,14 @@ export const joinTournament = async (req: AuthRequest, res: Response) => {
     }
 
     // Check if user already joined
-    if (tournament.participants.some(p => p.userId.toString() === req.user!.id)) {
+    if (tournament.participants.some(p => p.toString() === req.user!.id)) {
       return res
         .status(400)
         .json({ message: "You have already joined this tournament" });
     }
 
     // Check if user has enough balance for entry fee
-    const user = await User.findById(req.user!.id);
+    const user = await User.findById(req.user!._id);
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
@@ -177,16 +177,12 @@ export const joinTournament = async (req: AuthRequest, res: Response) => {
     await user.save();
 
     // Add user to tournament
-    tournament.participants.push({
-      userId: new mongoose.Types.ObjectId(req.user!.id),
-      teamName: user.managerInfo?.clubName || "Unknown Team",
-      joinedAt: new Date()
-    });
+    tournament.participants.push(req.user!._id);
     await tournament.save();
 
     // Create transaction record
     const transaction = new Transaction({
-      user: new mongoose.Types.ObjectId(req.user!.id),
+      user: req.user!._id,
       type: "tournament_entry",
       amount: tournament.entryFee,
       description: `Entry fee for tournament: ${tournament.name}`,
@@ -218,14 +214,14 @@ export const leaveTournament = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ message: "Tournament not found" });
     }
 
-    if (tournament.status !== TournamentStatus.UPCOMING) {
+    if (tournament.status !== "upcoming") {
       return res
         .status(400)
         .json({ message: "Cannot leave tournament after it has started" });
     }
 
     // Check if user is in tournament
-    if (!tournament.participants.some(p => p.userId.toString() === req.user!.id)) {
+    if (!tournament.participants.includes(req.user!._id)) {
       return res
         .status(400)
         .json({ message: "You are not in this tournament" });
@@ -233,19 +229,19 @@ export const leaveTournament = async (req: AuthRequest, res: Response) => {
 
     // Remove user from tournament
     tournament.participants = tournament.participants.filter(
-      (participant) => participant.userId.toString() !== req.user!.id
+      (participant) => participant.toString() !== req.user!._id.toString()
     );
     await tournament.save();
 
     // Refund entry fee
-    const user = await User.findById(req.user!.id);
+    const user = await User.findById(req.user!._id);
     if (user) {
       user.coins += tournament.entryFee;
       await user.save();
 
       // Create refund transaction
       const transaction = new Transaction({
-        user: new mongoose.Types.ObjectId(req.user!.id),
+        user: req.user!._id,
         type: "refund",
         amount: tournament.entryFee,
         description: `Refund for leaving tournament: ${tournament.name}`,
@@ -280,13 +276,13 @@ export const startTournament = async (req: AuthRequest, res: Response) => {
 
     // Check permissions
     if (
-      tournament.creator.toString() !== req.user!.id &&
-      req.user!.role !== UserRole.SUPER_ADMIN
+      tournament.creator.toString() !== req.user!._id.toString() &&
+      req.user!.role !== "admin"
     ) {
       return res.status(403).json({ message: "Access denied" });
     }
 
-    if (tournament.status !== TournamentStatus.UPCOMING) {
+    if (tournament.status !== "upcoming") {
       return res.status(400).json({ message: "Tournament cannot be started" });
     }
 
@@ -297,12 +293,12 @@ export const startTournament = async (req: AuthRequest, res: Response) => {
     }
 
     // Start tournament
-    tournament.status = TournamentStatus.ACTIVE;
+    tournament.status = "active";
     tournament.actualStartDate = new Date();
     await tournament.save();
 
     // Generate first round matches
-    await generateTournamentMatches(tournament._id as unknown as string);
+    await generateTournamentMatches(tournament._id);
 
     res.json({
       message: "Tournament started successfully",
@@ -330,25 +326,25 @@ export const completeTournament = async (req: AuthRequest, res: Response) => {
 
     // Check permissions
     if (
-      tournament.creator.toString() !== req.user!.id &&
-      req.user!.role !== UserRole.SUPER_ADMIN
+      tournament.creator.toString() !== req.user!._id.toString() &&
+      req.user!.role !== "admin"
     ) {
       return res.status(403).json({ message: "Access denied" });
     }
 
-    if (tournament.status !== TournamentStatus.ACTIVE) {
+    if (tournament.status !== "active") {
       return res.status(400).json({ message: "Tournament is not active" });
     }
 
     // Verify winner is in tournament
-    if (!tournament.participants.some(p => p.userId.toString() === winnerId)) {
+    if (!tournament.participants.includes(winnerId)) {
       return res
         .status(400)
         .json({ message: "Winner must be a tournament participant" });
     }
 
     // Complete tournament
-    tournament.status = TournamentStatus.COMPLETED;
+    tournament.status = "completed";
     tournament.winner = winnerId;
     tournament.actualEndDate = new Date();
     await tournament.save();
@@ -362,7 +358,7 @@ export const completeTournament = async (req: AuthRequest, res: Response) => {
 
       // Create prize transaction
       const transaction = new Transaction({
-        user: new mongoose.Types.ObjectId(winnerId),
+        user: winnerId,
         type: "tournament_prize",
         amount: tournament.prizePool,
         description: `Prize for winning tournament: ${tournament.name}`,
@@ -397,15 +393,15 @@ export const cancelTournament = async (req: AuthRequest, res: Response) => {
 
     // Check permissions
     if (
-      tournament.creator.toString() !== req.user!.id &&
-      req.user!.role !== UserRole.SUPER_ADMIN
+      tournament.creator.toString() !== req.user!._id.toString() &&
+      req.user!.role !== "admin"
     ) {
       return res.status(403).json({ message: "Access denied" });
     }
 
     if (
-      tournament.status === TournamentStatus.COMPLETED ||
-      tournament.status === TournamentStatus.CANCELLED
+      tournament.status === "completed" ||
+      tournament.status === "cancelled"
     ) {
       return res
         .status(400)
@@ -413,7 +409,7 @@ export const cancelTournament = async (req: AuthRequest, res: Response) => {
     }
 
     // Cancel tournament
-    tournament.status = TournamentStatus.CANCELLED;
+    tournament.status = "cancelled";
     await tournament.save();
 
     // Refund all participants
@@ -456,10 +452,7 @@ export const getUserTournaments = async (req: AuthRequest, res: Response) => {
     const { status, page = 1, limit = 10 } = req.query;
 
     const query: any = {
-      $or: [
-        { creator: new mongoose.Types.ObjectId(req.user!.id) }, 
-        { participants: new mongoose.Types.ObjectId(req.user!.id) }
-      ],
+      $or: [{ creator: req.user!._id }, { participants: req.user!._id }],
     };
 
     if (status) {
@@ -508,9 +501,10 @@ const generateTournamentMatches = async (tournamentId: string) => {
     for (let i = 0; i < participants.length; i++) {
       for (let j = i + 1; j < participants.length; j++) {
         const match = new Match({
-          player1: participants[i].userId,
-          player2: participants[j].userId,
-          tournament: new mongoose.Types.ObjectId(tournamentId),
+          player1: participants[i]._id,
+          player2: participants[j]._id,
+          tournament: tournamentId,
+          status: "scheduled",
         });
         matches.push(match);
       }
@@ -519,6 +513,5 @@ const generateTournamentMatches = async (tournamentId: string) => {
     await Match.insertMany(matches);
   } catch (error) {
     console.error("Generate tournament matches error:", error);
-    throw error;
   }
 };

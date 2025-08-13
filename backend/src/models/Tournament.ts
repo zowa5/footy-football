@@ -6,7 +6,19 @@ export enum TournamentStatus {
   IN_PROGRESS = "in_progress",
   COMPLETED = "completed",
   CANCELLED = "cancelled",
+  UPCOMING = "upcoming",
+  ACTIVE = "active"
 }
+
+// Helper type for status literals
+export type TournamentStatusLiteral = 
+  | "registration_open" 
+  | "registration_closed" 
+  | "in_progress" 
+  | "completed" 
+  | "cancelled"
+  | "upcoming"
+  | "active";
 
 export enum TournamentType {
   KNOCKOUT = "knockout",
@@ -33,7 +45,7 @@ export interface ITournament extends Document {
   name: string;
   description: string;
   type: TournamentType;
-  status: TournamentStatus;
+  status: TournamentStatusLiteral;
   maxParticipants: number;
   minParticipants: number;
   entryFee: number;
@@ -44,6 +56,10 @@ export interface ITournament extends Document {
     minLevel?: number;
     maxLevel?: number;
   };
+  creator: mongoose.Types.ObjectId;
+  actualStartDate: Date;
+  actualEndDate: Date;
+  prizePool: number;
   schedule: {
     registrationStart: Date;
     registrationEnd: Date;
