@@ -183,7 +183,7 @@ export const joinTournament = async (req: AuthRequest, res: Response) => {
     tournament.participants.push({
       userId: new mongoose.Types.ObjectId(req.user!.id),
       teamName: user.managerInfo?.clubName || "Unknown Team",
-      joinedAt: new Date()
+      joinedAt: new Date(),
     });
     await tournament.save();
 
@@ -305,7 +305,9 @@ export const startTournament = async (req: AuthRequest, res: Response) => {
     await tournament.save();
 
     // Generate first round matches
-    await generateTournamentMatches((tournament._id as mongoose.Types.ObjectId).toString());
+    await generateTournamentMatches(
+      (tournament._id as mongoose.Types.ObjectId).toString()
+    );
 
     res.json({
       message: "Tournament started successfully",
