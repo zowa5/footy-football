@@ -180,7 +180,11 @@ export const joinTournament = async (req: AuthRequest, res: Response) => {
     await user.save();
 
     // Add user to tournament
-    tournament.participants.push(new mongoose.Types.ObjectId(req.user!.id));
+    tournament.participants.push({
+      userId: new mongoose.Types.ObjectId(req.user!.id),
+      teamName: user.managerInfo?.clubName || "Unknown Team",
+      joinedAt: new Date()
+    });
     await tournament.save();
 
     // Create transaction record
@@ -301,7 +305,7 @@ export const startTournament = async (req: AuthRequest, res: Response) => {
     await tournament.save();
 
     // Generate first round matches
-    await generateTournamentMatches(tournament._id.toString());
+    await generateTournamentMatches((tournament._id as mongoose.Types.ObjectId).toString());
 
     res.json({
       message: "Tournament started successfully",
