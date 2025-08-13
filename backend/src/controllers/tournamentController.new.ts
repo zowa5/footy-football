@@ -157,9 +157,7 @@ export const joinTournament = async (req: AuthRequest, res: Response) => {
     }
 
     // Check if user already joined
-    if (
-      tournament.participants.some((p) => p.userId.toString() === req.user!.id)
-    ) {
+    if (tournament.participants.some((p) => p.toString() === req.user!.id)) {
       return res
         .status(400)
         .json({ message: "You have already joined this tournament" });
@@ -182,11 +180,7 @@ export const joinTournament = async (req: AuthRequest, res: Response) => {
     await user.save();
 
     // Add user to tournament
-    tournament.participants.push({
-      userId: new mongoose.Types.ObjectId(req.user!.id),
-      teamName: user.managerInfo?.clubName || "Unknown Team",
-      joinedAt: new Date(),
-    });
+    tournament.participants.push(new mongoose.Types.ObjectId(req.user!.id));
     await tournament.save();
 
     // Create transaction record
@@ -230,9 +224,7 @@ export const leaveTournament = async (req: AuthRequest, res: Response) => {
     }
 
     // Check if user is in tournament
-    if (
-      !tournament.participants.some((p) => p.userId.toString() === req.user!.id)
-    ) {
+    if (!tournament.participants.some((p) => p.toString() === req.user!.id)) {
       return res
         .status(400)
         .json({ message: "You are not in this tournament" });
@@ -240,7 +232,7 @@ export const leaveTournament = async (req: AuthRequest, res: Response) => {
 
     // Remove user from tournament
     tournament.participants = tournament.participants.filter(
-      (participant) => participant.userId.toString() !== req.user!.id
+      (participant) => participant.toString() !== req.user!.id
     );
     await tournament.save();
 
@@ -309,7 +301,7 @@ export const startTournament = async (req: AuthRequest, res: Response) => {
     await tournament.save();
 
     // Generate first round matches
-    await generateTournamentMatches(tournament._id as unknown as string);
+    await generateTournamentMatches(tournament._id.toString());
 
     res.json({
       message: "Tournament started successfully",
@@ -348,9 +340,7 @@ export const completeTournament = async (req: AuthRequest, res: Response) => {
     }
 
     // Verify winner is in tournament
-    if (
-      !tournament.participants.some((p) => p.userId.toString() === winnerId)
-    ) {
+    if (!tournament.participants.some((p) => p.toString() === winnerId)) {
       return res
         .status(400)
         .json({ message: "Winner must be a tournament participant" });
@@ -517,9 +507,9 @@ const generateTournamentMatches = async (tournamentId: string) => {
     for (let i = 0; i < participants.length; i++) {
       for (let j = i + 1; j < participants.length; j++) {
         const match = new Match({
-          player1: participants[i].userId,
-          player2: participants[j].userId,
-          tournament: new mongoose.Types.ObjectId(tournamentId),
+          player1: participants[i],
+          player2: participants[j],
+          tournament: tournamentId,
         });
         matches.push(match);
       }

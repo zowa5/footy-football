@@ -210,7 +210,10 @@ export const acquireSkill = asyncHandler(
     // (Dihapus, tidak ada requirements.level di schema baru)
 
     // Check currency and deduct cost
-    const currency = skillTemplate.currency as "skillPoints" | "coins" | "stylePoints";
+    const currency = skillTemplate.currency as
+      | "skillPoints"
+      | "coins"
+      | "stylePoints";
     if (currency === "skillPoints") {
       if ((player.stats?.skillPoints || 0) < skillTemplate.cost) {
         throw createError("Insufficient skill points", 400);

@@ -7,15 +7,15 @@ export enum TournamentStatus {
   COMPLETED = "completed",
   CANCELLED = "cancelled",
   UPCOMING = "upcoming",
-  ACTIVE = "active"
+  ACTIVE = "active",
 }
 
 // Helper type for status literals
-export type TournamentStatusLiteral = 
-  | "registration_open" 
-  | "registration_closed" 
-  | "in_progress" 
-  | "completed" 
+export type TournamentStatusLiteral =
+  | "registration_open"
+  | "registration_closed"
+  | "in_progress"
+  | "completed"
   | "cancelled"
   | "upcoming"
   | "active";
