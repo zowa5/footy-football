@@ -48,6 +48,7 @@ const purchaseSchema = new Schema<IPurchase>(
     },
     transactionId: {
       type: String,
+      // Hapus index disini karena sudah didefinisikan melalui schema.index()
       sparse: true,
     },
     metadata: {
