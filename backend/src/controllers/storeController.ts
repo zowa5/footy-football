@@ -1,11 +1,11 @@
 import { Request, Response } from "express";
 import { StoreItem, StoreItemType } from "../models/StoreItem";
 import {
-  Purchase,
   Transaction,
   TransactionType,
   TransactionStatus,
 } from "../models/Transaction";
+import { Purchase } from "../models/Purchase";
 import { User } from "../models/User";
 import { asyncHandler, createError } from "../middleware/errorHandler";
 import { AuthenticatedRequest } from "../middleware/auth";
