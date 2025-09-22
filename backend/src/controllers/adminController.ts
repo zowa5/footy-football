@@ -1483,6 +1483,7 @@ export const getReports = async (req: AuthenticatedRequest, res: Response) => {
         };
     }
 
+    // Build query
     res.json({
       success: true,
       data: {
