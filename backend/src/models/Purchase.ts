@@ -19,7 +19,6 @@ const purchaseSchema = new Schema<IPurchase>(
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
-      index: true,
     },
     item: {
       type: mongoose.Schema.Types.ObjectId,

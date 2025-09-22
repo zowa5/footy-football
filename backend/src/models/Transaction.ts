@@ -31,16 +31,7 @@ export interface ITransaction extends Document {
   updatedAt: Date;
 }
 
-export interface IPurchase extends Document {
-  userId: mongoose.Types.ObjectId;
-  storeItemId: mongoose.Types.ObjectId;
-  quantity: number;
-  totalPrice: number;
-  status: TransactionStatus;
-  appliedAt?: Date; // When the purchased item was applied to user
-  createdAt: Date;
-  updatedAt: Date;
-}
+
 
 const transactionSchema = new Schema<ITransaction>(
   {
@@ -87,54 +78,17 @@ const transactionSchema = new Schema<ITransaction>(
   }
 );
 
-const purchaseSchema = new Schema<IPurchase>(
-  {
-    userId: {
-      type: Schema.Types.ObjectId,
-      ref: "User",
-      required: [true, "User ID is required"],
-    },
-    storeItemId: {
-      type: Schema.Types.ObjectId,
-      ref: "StoreItem",
-      required: [true, "Store item ID is required"],
-    },
-    quantity: {
-      type: Number,
-      required: [true, "Quantity is required"],
-      min: [1, "Quantity must be at least 1"],
-      default: 1,
-    },
-    totalPrice: {
-      type: Number,
-      required: [true, "Total price is required"],
-      min: [0, "Total price cannot be negative"],
-    },
-    status: {
-      type: String,
-      enum: Object.values(TransactionStatus),
-      required: [true, "Purchase status is required"],
-      default: TransactionStatus.PENDING,
-    },
-    appliedAt: {
-      type: Date,
-    },
-  },
-  {
-    timestamps: true,
-  }
-);
+
 
 // Indexes
 transactionSchema.index({ userId: 1, createdAt: -1 });
 transactionSchema.index({ type: 1 });
 transactionSchema.index({ status: 1 });
 
-purchaseSchema.index({ userId: 1, createdAt: -1 });
-purchaseSchema.index({ status: 1 });
+
 
 export const Transaction = mongoose.model<ITransaction>(
   "Transaction",
   transactionSchema
 );
-export const Purchase = mongoose.model<IPurchase>("Purchase", purchaseSchema);
+
