@@ -7,7 +7,6 @@ import dotenv from "dotenv";
 import { connectDB } from "./utils/database";
 import { errorHandler } from "./middleware/errorHandler";
 import { seedFormations, seedStoreItems } from "./utils/seeders";
-// Note: seedSkills will be run separately for now
 
 // Import routes
 import authRoutes from "./routes/authRoutes";
@@ -25,17 +24,6 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Security middleware
-app.use(helmet());
-
-// Rate limiting
-const limiter = rateLimit({
-  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || "900000"), // 15 minutes
-  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || "500"), // limit each IP to 500 requests per windowMs (increased for development)
-  message: "Too many requests from this IP, please try again later.",
-});
-app.use("/api/", limiter);
-
 // CORS configuration
 const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(",") || [
   "http://localhost:5173",
@@ -46,16 +34,12 @@ const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(",") || [
 
 app.use(
   cors({
-    origin: function (origin, callback) {
-      // allow requests with no origin (like mobile apps or curl requests)
-      if (!origin) return callback(null, true);
-
-      if (allowedOrigins.indexOf(origin) === -1) {
-        var msg =
-          "The CORS policy for this site does not allow access from the specified Origin.";
-        return callback(new Error(msg), false);
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
       }
-      return callback(null, true);
     },
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
@@ -63,18 +47,23 @@ app.use(
   })
 );
 
-// app.use(
-//   cors({
-//     origin: (origin, callback) => {
-//       if (!origin || allowedOrigins.includes(origin)) {
-//         callback(null, true);
-//       } else {
-//         callback(new Error("Not allowed by CORS"));
-//       }
-//     },
-//     credentials: true,
-//   })
-// );
+// Handle preflight requests
+app.options("*", cors());
+
+// Security middleware (disable CORP to allow cross-origin)
+app.use(
+  helmet({
+    crossOriginResourcePolicy: false,
+  })
+);
+
+// Rate limiting
+const limiter = rateLimit({
+  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || "900000"), // 15 minutes
+  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || "500"),
+  message: "Too many requests from this IP, please try again later.",
+});
+app.use("/api/", limiter);
 
 // Body parsing middleware
 app.use(express.json({ limit: "10mb" }));
@@ -118,13 +107,9 @@ app.use(errorHandler);
 // Start server
 const startServer = async () => {
   try {
-    // Connect to MongoDB
     await connectDB();
-
-    // Seed default data
     await seedFormations();
     await seedStoreItems();
-    // Note: seedSkills will be run separately
 
     app.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);
