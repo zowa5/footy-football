@@ -230,7 +230,7 @@ export default function AuthPage() {
           <h1 className="text-4xl font-bold font-football bg-primary-gradient bg-clip-text text-transparent">
             FOOTY CLUB
           </h1>
-          <p className="text-xl font-semibold">UNIVERSEAA</p>
+          <p className="text-xl font-semibold">UNIVERSEA</p>
           <p className="text-muted-foreground">
             Enter the ultimate football management experience
           </p>
