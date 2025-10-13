@@ -96,7 +96,7 @@ export interface IUser extends Document {
   energy: number;
   stats: IUserStats;
   isActive: boolean;
-  isAI?: boolean; // Flag untuk menandai AI players
+  isAI: boolean; // Flag untuk menandai AI players
   ownedBy?: string; // Manager ID yang memiliki player ini (untuk AI players)
   lastLogin?: Date;
   createdAt: Date;
@@ -248,7 +248,7 @@ const userSchema = new Schema<IUser>(
     },
     password: {
       type: String,
-      required: function () {
+      required: function (): boolean {
         return !this.isAI; // Required jika bukan AI
       },
       minlength: 6,
