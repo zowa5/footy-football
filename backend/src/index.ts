@@ -25,8 +25,21 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Configure CORS first, before any other middleware
+app.use(cors({
+  origin: ["http://localhost:5173", "https://footy-football-rdc3.vercel.app"],
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept"],
+  exposedHeaders: ["Access-Control-Allow-Origin"],
+  optionsSuccessStatus: 200
+}));
+
 // Security middleware
-app.use(helmet());
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+  crossOriginOpenerPolicy: { policy: "unsafe-none" }
+}));
 
 // Rate limiting
 const limiter = rateLimit({
@@ -35,34 +48,6 @@ const limiter = rateLimit({
   message: "Too many requests from this IP, please try again later.",
 });
 app.use("/api/", limiter);
-
-// CORS configuration
-const allowedOrigins = [
-  "http://localhost:5173",
-  "https://footy-football-rdc3.vercel.app",
-];
-
-app.use(
-  cors({
-    origin: allowedOrigins || process.env.FRONTEND_URL,
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
-  })
-);
-
-app.use(
-  cors({
-    origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error("Not allowed by CORS"));
-      }
-    },
-    credentials: true,
-  })
-);
 
 // Body parsing middleware
 app.use(express.json({ limit: "10mb" }));
