@@ -48,7 +48,7 @@ const purchaseSchema = new Schema<IPurchase>(
     },
     transactionId: {
       type: String,
-      sparse: true,
+      index: { sparse: true } // Define index here instead of separately
     },
     metadata: {
       type: mongoose.Schema.Types.Mixed,
@@ -64,7 +64,6 @@ const purchaseSchema = new Schema<IPurchase>(
 purchaseSchema.index({ user: 1, purchaseDate: -1 });
 purchaseSchema.index({ item: 1 });
 purchaseSchema.index({ status: 1 });
-purchaseSchema.index({ transactionId: 1 }, { sparse: true });
 
 export const Purchase =
   mongoose.models.Purchase ||
