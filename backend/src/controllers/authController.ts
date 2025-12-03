@@ -5,6 +5,7 @@ import { generateToken } from "../utils/jwt";
 import { asyncHandler, createError } from "../middleware/errorHandler";
 import { UserRole, PlayerPosition } from "../types/common";
 import { registerSchema, loginSchema } from "../utils/validation";
+import mongoose from "mongoose";
 
 /**
  * @desc    Get available clubs for player signup
@@ -19,12 +20,12 @@ export const getAvailableClubs = asyncHandler(
         role: UserRole.MANAGER,
         isActive: true,
       })
-        .select("managerInfo.clubName managerInfo.clubLogo username")
+        .select("managerInfo.clubName managerInfo.clubLogo username _id")
         .sort({ "managerInfo.clubName": 1 });
 
       // Transform to club list format
       const clubs = managers.map((manager) => ({
-        _id: manager._id,
+        _id: manager._id ? (manager._id as any).toString() : new mongoose.Types.ObjectId().toString(),
         clubName: manager.managerInfo?.clubName || "Unknown Club",
         clubLogo: manager.managerInfo?.clubLogo || "",
         managerName: manager.username,
@@ -32,7 +33,7 @@ export const getAvailableClubs = asyncHandler(
 
       // Add "Free Agent" option
       clubs.unshift({
-        _id: "free-agent",
+        _id: new mongoose.Types.ObjectId().toString(),
         clubName: "Free Agent",
         clubLogo: "",
         managerName: "No Manager",
