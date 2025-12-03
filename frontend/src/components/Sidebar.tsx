@@ -34,7 +34,8 @@ const managerNavItems = [
   { title: "Formation", url: "/manager/formation", icon: Target },
   { title: "Matches", url: "/manager/matches", icon: Calendar },
   { title: "Leaderboard", url: "/manager/leaderboard", icon: Trophy },
-  { title: "AI Players", url: "/manager/store", icon: ShoppingBag },
+  // { title: "AI Players", url: "/manager/store", icon: ShoppingBag },
+  { title: "All Players", url: "/manager/all-players", icon: Users },
 ];
 
 interface SidebarProps {

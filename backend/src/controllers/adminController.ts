@@ -1542,6 +1542,7 @@ export const getAllTournaments = async (
       description: tournament.description,
       type: tournament.type,
       status: tournament.status,
+      minParticipants: tournament.minParticipants,
       maxParticipants: tournament.maxParticipants,
       currentParticipants: tournament.participants.length,
       entryFee: tournament.entryFee,
@@ -1622,6 +1623,7 @@ export const createTournament = async (
       name,
       description,
       type,
+      minParticipants,
       maxParticipants,
       entryFee,
       prizes,
@@ -1630,9 +1632,9 @@ export const createTournament = async (
     } = req.body;
 
     // Validation
-    if (!name || !type || !maxParticipants || !schedule) {
+    if (!name || !type || !minParticipants || !maxParticipants || !schedule) {
       return res.status(400).json({
-        message: "Name, type, maxParticipants, and schedule are required",
+        message: "Name, type, minParticipants, maxParticipants, and schedule are required",
       });
     }
 
@@ -1649,6 +1651,7 @@ export const createTournament = async (
       description,
       type,
       status,
+      minParticipants,
       maxParticipants,
       entryFee: entryFee || 0,
       prizes: prizes || [],
@@ -1690,6 +1693,7 @@ export const createTournament = async (
           description: tournament.description,
           type: tournament.type,
           status: tournament.status,
+          minParticipants: tournament.minParticipants,
           maxParticipants: tournament.maxParticipants,
           currentParticipants: 0,
           entryFee: tournament.entryFee,
@@ -1734,6 +1738,7 @@ export const updateTournament = async (
       description,
       type,
       status,
+      minParticipants,
       maxParticipants,
       entryFee,
       prizes,
@@ -1761,6 +1766,7 @@ export const updateTournament = async (
     if (description !== undefined) updates.description = description;
     if (type) updates.type = type;
     if (status) updates.status = status;
+    if (minParticipants) updates.minParticipants = minParticipants;
     if (maxParticipants) updates.maxParticipants = maxParticipants;
     if (entryFee !== undefined) updates.entryFee = entryFee;
     if (prizes) updates.prizes = prizes;
@@ -1799,6 +1805,7 @@ export const updateTournament = async (
           description: updatedTournament!.description,
           type: updatedTournament!.type,
           status: updatedTournament!.status,
+          minParticipants: updatedTournament!.minParticipants,
           maxParticipants: updatedTournament!.maxParticipants,
           currentParticipants: updatedTournament!.participants.length,
           entryFee: updatedTournament!.entryFee,
@@ -1908,6 +1915,7 @@ export const getTournamentById = async (
       description: tournament.description,
       type: tournament.type,
       status: tournament.status,
+      minParticipants: tournament.minParticipants,
       maxParticipants: tournament.maxParticipants,
       currentParticipants: tournament.participants.length,
       entryFee: tournament.entryFee,

@@ -27,6 +27,7 @@ export default function CreateTournament() {
     name: "",
     description: "",
     type: "",
+    minParticipants: 2,
     maxParticipants: 32,
     entryFee: 0,
     registrationStart: "",
@@ -81,6 +82,7 @@ export default function CreateTournament() {
         name: formData.name,
         description: formData.description,
         type: formData.type,
+        minParticipants: formData.minParticipants,
         maxParticipants: formData.maxParticipants,
         entryFee: formData.entryFee,
         schedule: {
@@ -163,6 +165,23 @@ export default function CreateTournament() {
                     <SelectItem value="group_stage">Group Stage</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="minParticipants">Min Participants</Label>
+                <Input
+                  id="minParticipants"
+                  type="number"
+                  value={formData.minParticipants}
+                  onChange={(e) =>
+                    handleInputChange(
+                      "minParticipants",
+                      parseInt(e.target.value)
+                    )
+                  }
+                  min="2"
+                  required
+                />
               </div>
 
               <div>

@@ -585,3 +585,65 @@ export const getLeaderboard = asyncHandler(
     });
   }
 );
+
+/**
+ * @desc    Get all players (for browsing by managers)
+ * @route   GET /api/players
+ * @access  Private
+ */
+export const getAllPlayers = asyncHandler(
+  async (req: AuthenticatedRequest, res: Response) => {
+    // Disable caching for this response
+    res.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+    res.set("Pragma", "no-cache");
+    res.set("Expires", "0");
+
+    // Get all players (users with role = 'player')
+    const players = await User.find({ role: "player" })
+      .select(
+        "username email playerInfo coins createdAt updatedAt stats isActive"
+      )
+      .lean();
+
+    // Format players data
+    const formattedPlayers = (players || []).map((player) => ({
+      _id: player._id,
+      username: player.username,
+      email: player.email,
+      playerInfo: {
+        firstName: player.playerInfo?.firstName || "Player",
+        lastName: player.playerInfo?.lastName || "User",
+        position: player.playerInfo?.position || "Unknown",
+        club: player.playerInfo?.club || "Free Agent",
+        age: player.playerInfo?.age || null,
+        height: player.playerInfo?.height || null,
+        weight: player.playerInfo?.weight || null,
+        nationality: player.playerInfo?.nationality || "Unknown",
+        style: player.playerInfo?.style || "balanced",
+      },
+      coins: player.coins || 0,
+      stats: player.stats || {
+        matchesPlayed: 0,
+        matchesWon: 0,
+        goals: 0,
+        assists: 0,
+        cleanSheets: 0,
+        yellowCards: 0,
+        redCards: 0,
+        tournamentsWon: 0,
+      },
+      isActive: player.isActive,
+      createdAt: player.createdAt,
+      updatedAt: player.updatedAt,
+    }));
+
+    res.json({
+      success: true,
+      data: {
+        players: formattedPlayers,
+        total: formattedPlayers.length,
+      },
+    });
+  }
+);
+

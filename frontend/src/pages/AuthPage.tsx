@@ -49,7 +49,7 @@ export default function AuthPage() {
   const [height, setHeight] = useState(175);
   const [weight, setWeight] = useState(70);
   const [nationality, setNationality] = useState("");
-  const [club, setClub] = useState("");
+  const [club, setClub] = useState("Free Agent");
   const [style, setStyle] = useState("balanced");
 
   // Calculate used and remaining points
@@ -375,10 +375,10 @@ export default function AuthPage() {
                         </div>
                       </div>
 
-                      <div className="flex items-center space-x-3 p-3 rounded-lg border border-border hover:bg-secondary/50 transition-colors">
-                        <RadioGroupItem value="manager" id="manager" />
+                      <div className="flex items-center space-x-3 p-3 rounded-lg border border-border opacity-50 cursor-not-allowed">
+                        <RadioGroupItem value="manager" id="manager" disabled />
                         <div className="flex-1">
-                          <Label htmlFor="manager" className="cursor-pointer">
+                          <Label htmlFor="manager" className="cursor-not-allowed">
                             <div className="flex items-center justify-between">
                               <span className="font-medium">Manager</span>
                               <Badge
@@ -502,27 +502,19 @@ export default function AuthPage() {
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="club">Club</Label>
-                        <Select value={club} onValueChange={setClub}>
-                          <SelectTrigger>
+                        <Select value={club} onValueChange={setClub} disabled>
+                          <SelectTrigger className="opacity-50 cursor-not-allowed">
                             <SelectValue placeholder="Select your club" />
                           </SelectTrigger>
                           <SelectContent>
-                            {clubsLoading ? (
-                              <SelectItem value="" disabled>
-                                Loading clubs...
-                              </SelectItem>
-                            ) : (
-                              clubsData?.data?.map((clubItem) => (
-                                <SelectItem
-                                  key={clubItem._id}
-                                  value={clubItem.clubName}
-                                >
-                                  {clubItem.clubName}
-                                </SelectItem>
-                              ))
-                            )}
+                            <SelectItem value="Free Agent">
+                              Free Agent (Assigned later)
+                            </SelectItem>
                           </SelectContent>
                         </Select>
+                        <p className="text-xs text-muted-foreground">
+                          Club will be assigned after registration
+                        </p>
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="style">Playing Style</Label>

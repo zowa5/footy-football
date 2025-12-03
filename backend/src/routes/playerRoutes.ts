@@ -8,6 +8,7 @@ import {
   upgradeSkill,
   getPlayerMatches,
   getLeaderboard,
+  getAllPlayers,
 } from "../controllers/playerController";
 
 const router = Router();
@@ -63,5 +64,12 @@ router.get("/matches", getPlayerMatches);
  * @access  Private
  */
 router.get("/leaderboard", getLeaderboard);
+
+/**
+ * @route   GET /api/players
+ * @desc    Get all players (for browsing by managers)
+ * @access  Private
+ */
+router.get("/", getAllPlayers);
 
 export default router;

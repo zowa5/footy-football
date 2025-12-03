@@ -609,6 +609,7 @@ export const useCreateTournament = () => {
       name: string;
       description?: string;
       type: string;
+      minParticipants: number;
       maxParticipants: number;
       entryFee?: number;
       prizes?: Array<{ position: number; coins: number; title?: string }>;
@@ -643,6 +644,7 @@ export const useUpdateTournament = () => {
       description?: string;
       type?: string;
       status?: string;
+      minParticipants?: number;
       maxParticipants?: number;
       entryFee?: number;
       prizes?: Array<{ position: number; coins: number; title?: string }>;

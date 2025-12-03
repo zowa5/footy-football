@@ -190,6 +190,10 @@ class ApiClient {
     return this.request<ApiResponse<Match[]>>("/player/matches");
   }
 
+  async getAllPlayers(): Promise<ApiResponse<{ players: User[]; total: number }>> {
+    return this.request<ApiResponse<{ players: User[]; total: number }>>("/player");
+  }
+
   async updatePlayerProfile(
     data: Partial<PlayerInfo>
   ): Promise<ApiResponse<User>> {

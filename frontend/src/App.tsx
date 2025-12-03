@@ -21,6 +21,7 @@ import ManagerStore from "./pages/manager/Store";
 import SquadManagement from "./pages/manager/SquadManagement";
 import FormationBuilder from "./pages/manager/FormationBuilder";
 import ManagerMatches from "./pages/manager/Matches";
+import AllPlayers from "./pages/manager/AllPlayers";
 
 // SuperAdmin Pages
 import SuperAdminDashboard from "./pages/superadmin/Dashboard";
@@ -139,6 +140,7 @@ const AppContent = () => {
           <Route path="/manager/store" element={<ManagerStore />} />
           <Route path="/manager/matches" element={<ManagerMatches />} />
           <Route path="/manager/leaderboard" element={<Leaderboard />} />
+          <Route path="/manager/all-players" element={<AllPlayers />} />
           <Route path="*" element={<Navigate to="/manager" replace />} />
         </Route>
       )}

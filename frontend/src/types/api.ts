@@ -205,6 +205,7 @@ export interface Tournament {
     | "in_progress"
     | "completed"
     | "cancelled";
+  minParticipants: number;
   maxParticipants: number;
   currentParticipants: number;
   entryFee: number;

@@ -32,6 +32,7 @@ export default function EditTournament() {
     name: "",
     description: "",
     type: "",
+    minParticipants: 2,
     maxParticipants: 32,
     entryFee: 0,
     registrationStart: "",
@@ -53,6 +54,7 @@ export default function EditTournament() {
         name: tournament.name,
         description: tournament.description || "",
         type: tournament.type,
+        minParticipants: tournament.minParticipants,
         maxParticipants: tournament.maxParticipants,
         entryFee: tournament.entryFee,
         registrationStart: new Date(tournament.schedule.registrationStart)
@@ -123,6 +125,7 @@ export default function EditTournament() {
         description: formData.description,
         type: formData.type,
         status: formData.status,
+        minParticipants: formData.minParticipants,
         maxParticipants: formData.maxParticipants,
         entryFee: formData.entryFee,
         schedule: {
@@ -247,6 +250,23 @@ export default function EditTournament() {
                     <SelectItem value="cancelled">Cancelled</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="minParticipants">Min Participants</Label>
+                <Input
+                  id="minParticipants"
+                  type="number"
+                  value={formData.minParticipants}
+                  onChange={(e) =>
+                    handleInputChange(
+                      "minParticipants",
+                      parseInt(e.target.value)
+                    )
+                  }
+                  min="2"
+                  required
+                />
               </div>
 
               <div>
