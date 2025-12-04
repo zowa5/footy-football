@@ -1536,42 +1536,49 @@ export const getAllTournaments = async (
     const total = await Tournament.countDocuments(query);
 
     // Process tournaments with additional stats
-    const processedTournaments = tournaments.map((tournament) => ({
-      _id: tournament._id,
-      name: tournament.name,
-      description: tournament.description,
-      type: tournament.type,
-      status: tournament.status,
-      minParticipants: tournament.minParticipants || 2,
-      maxParticipants: tournament.maxParticipants,
-      currentParticipants: tournament.participants?.length || 0,
-      entryFee: tournament.entryFee,
-      prizes: tournament.prizes || [],
-      schedule: tournament.schedule,
-      organizer: tournament.organizerId
-        ? {
-            id: (tournament.organizerId as any)?._id,
-            username: (tournament.organizerId as any)?.username,
-            email: (tournament.organizerId as any)?.email,
-          }
-        : null,
-      winner: tournament.winner
-        ? {
-            id: (tournament.winner as any)?._id,
-            username: (tournament.winner as any)?.username,
-          }
-        : null,
-      participants: (tournament.participants || []).map((p) => ({
-        id: (p.userId as any)?._id,
-        username: (p.userId as any)?.username,
-        teamName: p.teamName,
-        joinedAt: p.joinedAt,
-        eliminated: p.eliminated,
-        finalPosition: p.finalPosition,
-      })),
-      createdAt: tournament.createdAt,
-      updatedAt: tournament.updatedAt,
-    }));
+    const processedTournaments = tournaments.map((tournament) => {
+      const organizerData = tournament.organizerId ? {
+        id: String((tournament.organizerId as any)?._id || ""),
+        username: (tournament.organizerId as any)?.username || "Unknown",
+        email: (tournament.organizerId as any)?.email || "",
+      } : null;
+
+      const winnerData = tournament.winner ? {
+        id: String((tournament.winner as any)?._id || ""),
+        username: (tournament.winner as any)?.username || "Unknown",
+      } : null;
+
+      const participantsData = (tournament.participants || []).map((p: any) => {
+        const userId = p.userId as any;
+        return {
+          id: userId?._id ? String(userId._id) : "",
+          username: userId?.username || "Unknown",
+          teamName: p.teamName || "",
+          joinedAt: p.joinedAt,
+          eliminated: p.eliminated || false,
+          finalPosition: p.finalPosition || null,
+        };
+      });
+
+      return {
+        _id: tournament._id,
+        name: tournament.name,
+        description: tournament.description,
+        type: tournament.type,
+        status: tournament.status,
+        minParticipants: tournament.minParticipants || 2,
+        maxParticipants: tournament.maxParticipants,
+        currentParticipants: tournament.participants?.length || 0,
+        entryFee: tournament.entryFee,
+        prizes: tournament.prizes || [],
+        schedule: tournament.schedule,
+        organizer: organizerData,
+        winner: winnerData,
+        participants: participantsData,
+        createdAt: tournament.createdAt,
+        updatedAt: tournament.updatedAt,
+      };
+    });
 
     res.json({
       success: true,
