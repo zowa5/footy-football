@@ -210,6 +210,46 @@ export default function UsersManagement() {
     email: "",
     role: "",
     isActive: true,
+    playerInfo: {
+      firstName: "",
+      lastName: "",
+      position: "",
+      age: 0,
+      height: 0,
+      weight: 0,
+      nationality: "",
+      club: "",
+      offensiveAwareness: 0,
+      dribbling: 0,
+      lowPass: 0,
+      finishing: 0,
+      placeKicking: 0,
+      speed: 0,
+      kickingPower: 0,
+      physicalContact: 0,
+      stamina: 0,
+      ballWinning: 0,
+      ballControl: 0,
+      tightPossession: 0,
+      loftedPass: 0,
+      heading: 0,
+      curl: 0,
+      acceleration: 0,
+      jump: 0,
+      balance: 0,
+      defensiveAwareness: 0,
+      aggression: 0,
+      gkAwareness: 0,
+      gkClearing: 0,
+      gkReach: 0,
+      gkCatching: 0,
+      gkReflexes: 0,
+      weakFootUsage: 0,
+      weakFootAcc: 0,
+      form: 0,
+      injuryResistance: 0,
+      style: "",
+    },
   });
 
   const limit = 10;
@@ -235,6 +275,46 @@ export default function UsersManagement() {
       email: user.email,
       role: user.role,
       isActive: user.isActive,
+      playerInfo: user.playerInfo ? { ...user.playerInfo } : {
+        firstName: "",
+        lastName: "",
+        position: "",
+        age: 0,
+        height: 0,
+        weight: 0,
+        nationality: "",
+        club: "",
+        offensiveAwareness: 0,
+        dribbling: 0,
+        lowPass: 0,
+        finishing: 0,
+        placeKicking: 0,
+        speed: 0,
+        kickingPower: 0,
+        physicalContact: 0,
+        stamina: 0,
+        ballWinning: 0,
+        ballControl: 0,
+        tightPossession: 0,
+        loftedPass: 0,
+        heading: 0,
+        curl: 0,
+        acceleration: 0,
+        jump: 0,
+        balance: 0,
+        defensiveAwareness: 0,
+        aggression: 0,
+        gkAwareness: 0,
+        gkClearing: 0,
+        gkReach: 0,
+        gkCatching: 0,
+        gkReflexes: 0,
+        weakFootUsage: 0,
+        weakFootAcc: 0,
+        form: 0,
+        injuryResistance: 0,
+        style: "",
+      },
     });
     setEditDialogOpen(true);
   };
@@ -265,6 +345,7 @@ export default function UsersManagement() {
           email: editForm.email,
           role: editForm.role as "player" | "manager" | "super_admin",
           isActive: editForm.isActive,
+          playerInfo: editForm.playerInfo,
         },
       },
       {
@@ -493,79 +574,332 @@ export default function UsersManagement() {
 
       {/* Edit User Dialog */}
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[600px]">
           <DialogHeader>
-            <DialogTitle>Edit User</DialogTitle>
+            <DialogTitle>Edit User - {editingUser?.username}</DialogTitle>
             <DialogDescription>
-              Make changes to the user account here.
+              Make changes to the user account and player information here.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="username" className="text-right">
-                Username
-              </Label>
-              <Input
-                id="username"
-                value={editForm.username}
-                onChange={(e) =>
-                  setEditForm({ ...editForm, username: e.target.value })
-                }
-                className="col-span-3"
-              />
+            {/* Basic Info */}
+            <div className="space-y-3 border-b pb-4">
+              <h3 className="font-semibold text-sm">Basic Information</h3>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="username" className="text-right">
+                  Username
+                </Label>
+                <Input
+                  id="username"
+                  value={editForm.username}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, username: e.target.value })
+                  }
+                  className="col-span-3"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="email" className="text-right">
+                  Email
+                </Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={editForm.email}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, email: e.target.value })
+                  }
+                  className="col-span-3"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="role" className="text-right">
+                  Role
+                </Label>
+                <Select
+                  value={editForm.role}
+                  onValueChange={(value) =>
+                    setEditForm({ ...editForm, role: value })
+                  }
+                >
+                  <SelectTrigger className="col-span-3">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="player">Player</SelectItem>
+                    <SelectItem value="manager">Manager</SelectItem>
+                    <SelectItem value="super_admin">Super Admin</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="active" className="text-right">
+                  Status
+                </Label>
+                <Select
+                  value={editForm.isActive ? "active" : "inactive"}
+                  onValueChange={(value) =>
+                    setEditForm({ ...editForm, isActive: value === "active" })
+                  }
+                >
+                  <SelectTrigger className="col-span-3">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="inactive">Inactive</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="email" className="text-right">
-                Email
-              </Label>
-              <Input
-                id="email"
-                type="email"
-                value={editForm.email}
-                onChange={(e) =>
-                  setEditForm({ ...editForm, email: e.target.value })
-                }
-                className="col-span-3"
-              />
+
+            {/* Player Info */}
+            <div className="space-y-3 border-b pb-4">
+              <h3 className="font-semibold text-sm">Player Information</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="firstName" className="text-sm">
+                    First Name
+                  </Label>
+                  <Input
+                    id="firstName"
+                    value={editForm.playerInfo.firstName}
+                    onChange={(e) =>
+                      setEditForm({
+                        ...editForm,
+                        playerInfo: {
+                          ...editForm.playerInfo,
+                          firstName: e.target.value,
+                        },
+                      })
+                    }
+                    className="h-8"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="lastName" className="text-sm">
+                    Last Name
+                  </Label>
+                  <Input
+                    id="lastName"
+                    value={editForm.playerInfo.lastName}
+                    onChange={(e) =>
+                      setEditForm({
+                        ...editForm,
+                        playerInfo: {
+                          ...editForm.playerInfo,
+                          lastName: e.target.value,
+                        },
+                      })
+                    }
+                    className="h-8"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="position" className="text-sm">
+                    Position
+                  </Label>
+                  <Input
+                    id="position"
+                    value={editForm.playerInfo.position}
+                    onChange={(e) =>
+                      setEditForm({
+                        ...editForm,
+                        playerInfo: {
+                          ...editForm.playerInfo,
+                          position: e.target.value,
+                        },
+                      })
+                    }
+                    className="h-8"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="style" className="text-sm">
+                    Style
+                  </Label>
+                  <Input
+                    id="style"
+                    value={editForm.playerInfo.style}
+                    onChange={(e) =>
+                      setEditForm({
+                        ...editForm,
+                        playerInfo: {
+                          ...editForm.playerInfo,
+                          style: e.target.value,
+                        },
+                      })
+                    }
+                    className="h-8"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-4 gap-4">
+                <div>
+                  <Label htmlFor="age" className="text-sm">
+                    Age
+                  </Label>
+                  <Input
+                    id="age"
+                    type="number"
+                    value={editForm.playerInfo.age}
+                    onChange={(e) =>
+                      setEditForm({
+                        ...editForm,
+                        playerInfo: {
+                          ...editForm.playerInfo,
+                          age: parseInt(e.target.value) || 0,
+                        },
+                      })
+                    }
+                    className="h-8"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="height" className="text-sm">
+                    Height (cm)
+                  </Label>
+                  <Input
+                    id="height"
+                    type="number"
+                    value={editForm.playerInfo.height}
+                    onChange={(e) =>
+                      setEditForm({
+                        ...editForm,
+                        playerInfo: {
+                          ...editForm.playerInfo,
+                          height: parseInt(e.target.value) || 0,
+                        },
+                      })
+                    }
+                    className="h-8"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="weight" className="text-sm">
+                    Weight (kg)
+                  </Label>
+                  <Input
+                    id="weight"
+                    type="number"
+                    value={editForm.playerInfo.weight}
+                    onChange={(e) =>
+                      setEditForm({
+                        ...editForm,
+                        playerInfo: {
+                          ...editForm.playerInfo,
+                          weight: parseInt(e.target.value) || 0,
+                        },
+                      })
+                    }
+                    className="h-8"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="nationality" className="text-sm">
+                    Nationality
+                  </Label>
+                  <Input
+                    id="nationality"
+                    value={editForm.playerInfo.nationality}
+                    onChange={(e) =>
+                      setEditForm({
+                        ...editForm,
+                        playerInfo: {
+                          ...editForm.playerInfo,
+                          nationality: e.target.value,
+                        },
+                      })
+                    }
+                    className="h-8"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="club" className="text-sm">
+                  Club
+                </Label>
+                <Input
+                  id="club"
+                  value={editForm.playerInfo.club}
+                  onChange={(e) =>
+                    setEditForm({
+                      ...editForm,
+                      playerInfo: {
+                        ...editForm.playerInfo,
+                        club: e.target.value,
+                      },
+                    })
+                  }
+                  className="h-8"
+                />
+              </div>
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="role" className="text-right">
-                Role
-              </Label>
-              <Select
-                value={editForm.role}
-                onValueChange={(value) =>
-                  setEditForm({ ...editForm, role: value })
-                }
-              >
-                <SelectTrigger className="col-span-3">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="player">Player</SelectItem>
-                  <SelectItem value="manager">Manager</SelectItem>
-                  <SelectItem value="super_admin">Super Admin</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="active" className="text-right">
-                Status
-              </Label>
-              <Select
-                value={editForm.isActive ? "active" : "inactive"}
-                onValueChange={(value) =>
-                  setEditForm({ ...editForm, isActive: value === "active" })
-                }
-              >
-                <SelectTrigger className="col-span-3">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="inactive">Inactive</SelectItem>
-                </SelectContent>
-              </Select>
+
+            {/* Player Stats */}
+            <div className="space-y-3">
+              <h3 className="font-semibold text-sm">Player Attributes</h3>
+              <div className="grid grid-cols-3 gap-3">
+                {[
+                  { key: "offensiveAwareness", label: "Offensive Awareness" },
+                  { key: "dribbling", label: "Dribbling" },
+                  { key: "lowPass", label: "Low Pass" },
+                  { key: "finishing", label: "Finishing" },
+                  { key: "placeKicking", label: "Place Kicking" },
+                  { key: "speed", label: "Speed" },
+                  { key: "kickingPower", label: "Kicking Power" },
+                  { key: "physicalContact", label: "Physical Contact" },
+                  { key: "stamina", label: "Stamina" },
+                  { key: "ballWinning", label: "Ball Winning" },
+                  { key: "ballControl", label: "Ball Control" },
+                  { key: "tightPossession", label: "Tight Possession" },
+                  { key: "loftedPass", label: "Lofted Pass" },
+                  { key: "heading", label: "Heading" },
+                  { key: "curl", label: "Curl" },
+                  { key: "acceleration", label: "Acceleration" },
+                  { key: "jump", label: "Jump" },
+                  { key: "balance", label: "Balance" },
+                  { key: "defensiveAwareness", label: "Defensive Awareness" },
+                  { key: "aggression", label: "Aggression" },
+                  { key: "gkAwareness", label: "GK Awareness" },
+                  { key: "gkClearing", label: "GK Clearing" },
+                  { key: "gkReach", label: "GK Reach" },
+                  { key: "gkCatching", label: "GK Catching" },
+                  { key: "gkReflexes", label: "GK Reflexes" },
+                  { key: "weakFootUsage", label: "Weak Foot Usage" },
+                  { key: "weakFootAcc", label: "Weak Foot Accuracy" },
+                  { key: "form", label: "Form" },
+                  { key: "injuryResistance", label: "Injury Resistance" },
+                ].map(({ key, label }) => (
+                  <div key={key}>
+                    <Label htmlFor={key} className="text-xs">
+                      {label}
+                    </Label>
+                    <Input
+                      id={key}
+                      type="number"
+                      value={editForm.playerInfo[key as keyof typeof editForm.playerInfo]}
+                      onChange={(e) =>
+                        setEditForm({
+                          ...editForm,
+                          playerInfo: {
+                            ...editForm.playerInfo,
+                            [key]: parseInt(e.target.value) || 0,
+                          },
+                        })
+                      }
+                      className="h-8"
+                      min="0"
+                      max="99"
+                    />
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
           <DialogFooter>
