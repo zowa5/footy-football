@@ -1542,28 +1542,28 @@ export const getAllTournaments = async (
       description: tournament.description,
       type: tournament.type,
       status: tournament.status,
-      minParticipants: tournament.minParticipants,
+      minParticipants: tournament.minParticipants || 2,
       maxParticipants: tournament.maxParticipants,
-      currentParticipants: tournament.participants.length,
+      currentParticipants: tournament.participants?.length || 0,
       entryFee: tournament.entryFee,
-      prizes: tournament.prizes,
+      prizes: tournament.prizes || [],
       schedule: tournament.schedule,
       organizer: tournament.organizerId
         ? {
-            id: (tournament.organizerId as any)._id,
-            username: (tournament.organizerId as any).username,
-            email: (tournament.organizerId as any).email,
+            id: (tournament.organizerId as any)?._id,
+            username: (tournament.organizerId as any)?.username,
+            email: (tournament.organizerId as any)?.email,
           }
         : null,
       winner: tournament.winner
         ? {
-            id: (tournament.winner as any)._id,
-            username: (tournament.winner as any).username,
+            id: (tournament.winner as any)?._id,
+            username: (tournament.winner as any)?.username,
           }
         : null,
-      participants: tournament.participants.map((p) => ({
-        id: (p.userId as any)._id,
-        username: (p.userId as any).username,
+      participants: (tournament.participants || []).map((p) => ({
+        id: (p.userId as any)?._id,
+        username: (p.userId as any)?.username,
         teamName: p.teamName,
         joinedAt: p.joinedAt,
         eliminated: p.eliminated,
