@@ -24,6 +24,7 @@ export enum TournamentType {
   KNOCKOUT = "knockout",
   ROUND_ROBIN = "round_robin",
   LEAGUE = "league",
+  GROUP_STAGE = "group_stage",
 }
 
 export interface ITournamentParticipant {
