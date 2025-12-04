@@ -223,7 +223,7 @@ export default function EditTournament() {
                   <SelectContent>
                     <SelectItem value="league">League</SelectItem>
                     <SelectItem value="knockout">Knockout</SelectItem>
-                    <SelectItem value="group_stage">Group Stage</SelectItem>
+                    <SelectItem value="round_robin">Round Robin</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
